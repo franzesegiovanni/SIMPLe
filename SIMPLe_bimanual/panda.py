@@ -201,7 +201,6 @@ class Panda:
         self.execute_pub.publish(goal)
 
     def execute_test(self):
-        # print('check')
         self.update_params()
 
         self.pause = False
@@ -231,8 +230,7 @@ class Panda:
             
             i, attractor_pos, attractor_ori, beta= self.GGP()
 
-            while 1: #i < (self.execution_traj.shape[1])-1:
-                #print(i)
+            while 1:
                 self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
                 r = rospy.Rate(self.control_freq*self.execution_factor)
 
@@ -251,8 +249,8 @@ class Panda:
                 self.set_attractor(attractor_pos, attractor_ori)
                 self.move_gripper(self.execution_gripper[0, i])
                 r.sleep()
+
     def execute(self, start):
-        # print('check')
         self.update_params()
 
         self.pause = False
@@ -331,22 +329,13 @@ class Panda:
         sigma_treshold= 1 - np.exp(-2)
         #calcolation of correlation in space
         position_error= np.linalg.norm(self.execution_traj.T - np.array(self.cart_pos), axis=1)/labda_position
-        # k_star_position=np.exp(-position_error)
 
         #calcolation of correlation in time
         index_error= np.abs(np.arange(self.execution_traj.shape[1])-self.index)/lambda_index
         index_error_clip= np.clip(index_error, 0, 1) #1
-        # k_star_time= np.exp(-index_error)
-        # k_star_time = np.exp(-index_error_clip)
 
         # Calculate the product of the two correlation vectors
         k_start_time_position=np.exp(-position_error-index_error_clip)#k_star_position*k_star_time
-
-        # Find the element with the maximum correlation
-        # mu_index = int(np.argmax(k_start_time_position))
-        
-        # Compute the uncertainty only as a function of the correlation in space 
-        # sigma_position= 1- np.max(k_star_position)
 
         # Compute the uncertainty only as a function of the correlation in space and time
         sigma_position_time= 1- np.max(k_start_time_position)
@@ -360,19 +349,12 @@ class Panda:
             # print(self.mu_index)
             self.mu_index = int(self.mu_index+ 1.0*np.sign((int(np.argmax(k_start_time_position))- self.mu_index)))
 
-        # # Compute the scaling factor for the stiffness Eq 15
-        # if sigma_position > sigma_treshold: 
-        #     beta= (1-sigma_position)/(1-sigma_treshold)
-        # else:
-        #     beta=1
-        # print(int(np.round(look_ahead*self.execution_factor)))
         i = np.min([self.mu_index+int(np.round(look_ahead*self.execution_factor)), self.execution_traj.shape[1]-1]) 
         self.index=np.min([self.mu_index+look_ahead, self.execution_traj.shape[1]-1])
 
         attractor_pos = [self.execution_traj[0][i], self.execution_traj[1][i], self.execution_traj[2][i]]
         attractor_ori = [self.execution_ori[0][i], self.execution_ori[1][i], self.execution_ori[2][i],self.execution_ori[3][i]]
 
-        # print(i)
         return  i, attractor_pos, attractor_ori, beta
 
     def go_to_start(self):

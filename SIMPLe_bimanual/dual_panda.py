@@ -231,28 +231,6 @@ class DualPanda:
             self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
             r = rospy.Rate(self.control_freq*self.execution_factor)
 
-            # traj_error_right = np.linalg.norm(self.Panda_right.execution_traj.T - np.array(self.Panda_right.cart_pos), axis=1)
-            # min_traj_error_right=np.min(traj_error_right)
-            # if np.min(min_traj_error_right) > 0.02: 
-            #     beta_right= np.exp(-(min_traj_error_right-0.02)/0.02) #scaling factor
-            # else:
-            #     beta_right=1
-
-            # traj_error_left = np.linalg.norm(self.Panda_left.execution_traj.T - np.array(self.Panda_left.cart_pos), axis=1)
-            # min_traj_error_left=np.min(traj_error_left)
-            # if np.min(min_traj_error_left) > 0.02: 
-            #     beta_left= np.exp(-(min_traj_error_left-0.02)/0.02) #scaling factor
-            # else:
-            #     beta_left=1   
-
-            # stiff_msg_left = Float32MultiArray()
-            # stiff_msg_left.data =beta_left* np.array([self.Panda_left.execution_stiff_lin[0][self.index], self.Panda_left.execution_stiff_lin[1][self.index], self.Panda_left.execution_stiff_lin[2][self.index], self.Panda_left.execution_stiff_ori[0][self.index],self.Panda_left.execution_stiff_ori[1][self.index],self.Panda_left.execution_stiff_ori[2][self.index], 0.0]).astype(np.float32)
-            
-            # stiff_msg_right = Float32MultiArray()
-            # stiff_msg_right.data =beta_right *np.array([self.Panda_right.execution_stiff_lin[0][self.index], self.Panda_right.execution_stiff_lin[1][self.index], self.Panda_right.execution_stiff_lin[2][self.index], self.Panda_right.execution_stiff_ori[0][self.index],self.Panda_right.execution_stiff_ori[1][self.index],self.Panda_right.execution_stiff_ori[2][self.index], 0.0]).astype(np.float32)
-            # self.Panda_left.stiffness_pub.publish(stiff_msg_left)
-            # self.Panda_right.stiffness_pub.publish(stiff_msg_right)
-
 
             if self.continue_dual_traj(self.index, self.recorded_traj_dual):
 
@@ -286,8 +264,6 @@ class DualPanda:
 
                 self.index += 1
                 self.Panda_left.index = self.Panda_right.index = self.index
-
-
 
             r.sleep()
 
@@ -358,17 +334,15 @@ class DualPanda:
         if self.external_record:
             rospy.set_param("/dual_teaching/recording", True)
 
-        # self.Panda_left.execute_traj()
-        # self.Panda_right.execute_traj()
         self.end=False
         r = rospy.Rate(self.control_freq)
         self.index = 0
         self.Panda_left.index = self.Panda_right.index = self.index
 
         while 1:
-            i_left, attractor_pos_left, attractor_ori_left, stiff_msg_left, beta_left= self.Panda_left.SIMPLe()
+            i_left, attractor_pos_left, attractor_ori_left, stiff_msg_left, beta_left= self.Panda_left.GGP()
                 
-            i_right, attractor_pos_right, attractor_ori_right, stiff_msg_right, beta_right= self.Panda_right.SIMPLe()
+            i_right, attractor_pos_right, attractor_ori_right, stiff_msg_right, beta_right= self.Panda_right.GGP()
             
             attractor_pos_left = [self.Panda_left.execution_traj[0][i_right], self.Panda_left.execution_traj[1][i_right], self.Panda_left.execution_traj[2][i_right]]
             attractor_ori_left = [self.Panda_left.execution_ori[0][i_right], self.Panda_left.execution_ori[1][i_right], self.Panda_left.execution_ori[2][i_right],self.Panda_left.execution_ori[3][i_right]]
@@ -426,9 +400,9 @@ class DualPanda:
         self.index = 0
         self.Panda_left.index = self.Panda_right.index = self.index
         while 1:
-            i_left, attractor_pos_left, attractor_ori_left, stiff_msg_left, beta_left= self.Panda_left.SIMPLe()
+            i_left, attractor_pos_left, attractor_ori_left, stiff_msg_left, beta_left= self.Panda_left.GGP()
                 
-            i_right, attractor_pos_right, attractor_ori_right, stiff_msg_right, beta_right= self.Panda_right.SIMPLe()
+            i_right, attractor_pos_right, attractor_ori_right, stiff_msg_right, beta_right= self.Panda_right.GGP()
             
             if np.abs(i_left-i_right)>6:
                 max_index= np.max([i_left, i_right])-4
