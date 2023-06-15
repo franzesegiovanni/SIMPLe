@@ -57,10 +57,10 @@ class Panda:
         self.execution_stiff_ori = np.zeros(3)
 
         self.gripper_width = 0
-        self.grip_command.goal.epsilon.inner = 0.1
-        self.grip_command.goal.epsilon.outer = 0.1
+        self.grip_command.goal.epsilon.inner = 0.3
+        self.grip_command.goal.epsilon.outer = 0.3
         self.grip_command.goal.speed = 0.1
-        self.grip_command.goal.force = 5
+        self.grip_command.goal.force = 0.1
         self.grip_command.goal.width = 1
 
         self.attractor_distance_threshold = 0.08
@@ -322,7 +322,7 @@ class Panda:
 
 
     def GGP(self):
-        look_ahead=5 # how many steps forward is the attractor for any element of the graph
+        look_ahead=3 # how many steps forward is the attractor for any element of the graph
 
         labda_position=0.05
         lamda_time=0.05
