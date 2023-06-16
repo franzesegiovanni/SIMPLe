@@ -1,10 +1,16 @@
 # SIMPLe: Safe, Interactive Movement Primitives Learning
 
-This is the code use for the experiements done for the paper: 
+This is the code used for the experiments done for the paper: 
 ### Interactive Imitation Learning of Bimanual Movement Primitives 
 
-published in ### Transaction of Mechatronics (T-MECH) ###
+published in Transaction of Mechatronics (T-MECH).
 
-This repository was the official one used for the tests. 
+- [The official repository](https://github.com/franzesegiovanni/SIMPLe.git)
 
-I am still cleaning the code and making it as a python package.
+- [The preprint](https://arxiv.org/pdf/2210.16220.pdf)
+
+- [The bimanual impedance controller](https://github.com/franzesegiovanni/franka_bimanual_controllers)
+
+- [The human-friendly impedance controller](https://github.com/franzesegiovanni/franka_human_friendly_controllers.git)
+
+More instructions and tutorials will follow. 
