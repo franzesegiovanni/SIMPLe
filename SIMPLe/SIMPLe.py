@@ -1,12 +1,18 @@
 from ILoSA import ILoSA #you need to pip install ILoSA first 
-
+import numpy as np
+from ILoSA import InteractiveGP
+from ILoSA.data_prep import slerp_sat
+import pickle
+from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel, ConstantKernel as C
+import rospy
 class SIMPLe(ILoSA):
 
     def __init__(self):
-        super(ILoSA, self).__init__()
-        self.rec_freq = 30  # [Hz]
-        self.control_freq=30 # [Hz]
-
+        super(SIMPLe, self).__init__()
+        self.rec_freq = 20  # [Hz]
+        self.control_freq=20 # [Hz]
+        self.r_control=rospy.Rate(self.control_freq)
+        self.r_rec=rospy.Rate(self.rec_freq)
     def Train_GPs(self):
         print("SIMPLe does not need to be trained")
         if len(self.nullspace_traj)>0 and len(self.nullspace_joints)>0:
@@ -18,6 +24,7 @@ class SIMPLe(ILoSA):
                 pickle.dump(self.NullSpaceControl,nullspace)
         else: 
             print('No Null Space Control Policy Learned')    
+
 
 
     def GGP(self):
@@ -60,9 +67,10 @@ class SIMPLe(ILoSA):
 
     def step(self):
         
-        i, beta = GGP()
+        i, beta = self.GGP()
 
         pos_goal  = self.training_traj[i,:]
+        pos_goal=self.cart_pos+ np.clip([pos_goal[0]-self.cart_pos[0],pos_goal[1]-self.cart_pos[1],pos_goal[2]-self.cart_pos[2]],-0.05,0.05)
         quat_goal = self.training_ori[i,:]
         quat_goal=slerp_sat(self.cart_ori, quat_goal, 0.1)
         gripper_goal=self.training_gripper[i,0]
@@ -70,7 +78,11 @@ class SIMPLe(ILoSA):
         self.set_attractor(pos_goal,quat_goal)
         self.move_gripper(gripper_goal)
             
-        pos_stiff = self.K_mean*beta*np.ones(1,3) 
-        rot_stiff = self.K_ori*beta*np.ones(1,3)  
+        K_lin_scaled =beta*self.K_mean
+        K_ori_scaled =beta*self.K_ori
+        pos_stiff = [K_lin_scaled,K_lin_scaled,K_lin_scaled]
+        rot_stiff = [K_ori_scaled,K_ori_scaled,K_ori_scaled]
+        # self.pos_stiff = self.K_mean*beta*np.ones([1,3]) 
+        # self.rot_stiff = self.K_ori*beta*np.ones([1,3])  
 
-        self.set_stiffness(pos_stiff, rot_stiff, null_stiff)    
+        self.set_stiffness(pos_stiff, rot_stiff, self.null_stiff)    
