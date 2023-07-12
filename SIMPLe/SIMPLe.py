@@ -5,7 +5,10 @@ from ILoSA.data_prep import slerp_sat
 import pickle
 from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel, ConstantKernel as C
 import rospy
-class SIMPLe(ILoSA):
+from GILoSA import Transport
+from GILoSA.tag_detector import Tag_Detector
+
+class SIMPLe(ILoSA, Transport, Tag_Detector):
 
     def __init__(self):
         super(SIMPLe, self).__init__()
