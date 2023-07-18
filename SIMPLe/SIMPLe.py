@@ -79,7 +79,7 @@ class SIMPLe(ILoSA, Transport, Tag_Detector):
         gripper_goal=self.training_gripper[i,0]
         
         self.set_attractor(pos_goal,quat_goal)
-        self.move_gripper(gripper_goal)
+        self.grasp_gripper(gripper_goal)
             
         K_lin_scaled =beta*self.K_mean
         K_ori_scaled =beta*self.K_ori
@@ -89,3 +89,21 @@ class SIMPLe(ILoSA, Transport, Tag_Detector):
         # self.rot_stiff = self.K_ori*beta*np.ones([1,3])  
 
         self.set_stiffness(pos_stiff, rot_stiff, self.null_stiff)    
+
+
+    def convert_distribution_to_position_array(self):
+        target_array=np.array([], dtype=np.int64).reshape(0,3)
+        for detection_target_in_camera in self.target_distribution:
+            detection_target = self.transform_in_base(detection_target_in_camera.pose.pose.pose)
+            t=np.array([detection_target.pose.position.x,detection_target.pose.position.y,detection_target.pose.position.z])
+            target_array=np.vstack((target_array,t))
+        return target_array
+
+
+    def convert_distribution_to_orientation_array(self):
+        target_array=np.array([], dtype=np.int64).reshape(0,4)
+        for detection_target_in_camera in self.target_distribution:
+            detection_target = self.transform_in_base(detection_target_in_camera.pose.pose.pose)
+            t=np.array([detection_target.pose.orientation.w,detection_target.pose.orientation.x,detection_target.pose.orientation.y,detection_target.pose.orientation.z])
+            target_array=np.vstack((target_array,t))
+        return target_array
