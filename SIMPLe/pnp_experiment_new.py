@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     #%%
  
-    GILoSA.go_to_pose(GILoSA.view_marker)
+    # GILoSA.go_to_pose(GILoSA.view_marker)
     GILoSA.record_source_distribution()
     f = open("results/pnp/source.pkl","wb")
     # write the python object (dict) to pickle file
@@ -61,7 +61,9 @@ if __name__ == '__main__':
     #%%
     GILoSA.source_distribution=[]
     GILoSA.target_distribution=[]
+    #GILoSA.source_distribution=GILoSA.Record_tags_goto(GILoSA.source_distribution)
     GILoSA.source_distribution=GILoSA.Record_tags(GILoSA.source_distribution)
+
     print("Source len",len(GILoSA.source_distribution))
     print("Save the  source distribution data") 
     GILoSA.save_distributions()  
@@ -91,8 +93,10 @@ if __name__ == '__main__':
     GILoSA.load_distributions()     #load source 
     GILoSA.load()
     GILoSA.load_traj_tags()
+    GILoSA.home_gripper()
     #%%
     GILoSA.target_distribution=[]
+    # GILoSA.target_distribution=GILoSA.Record_tags_goto(GILoSA.target_distribution)
     GILoSA.target_distribution=GILoSA.Record_tags(GILoSA.target_distribution)
 
     print("Target len", len(GILoSA.target_distribution) )
@@ -109,7 +113,7 @@ if __name__ == '__main__':
     if type(GILoSA.target_distribution) != type(GILoSA.source_distribution):
         raise TypeError("Both the distribution must be a numpy array.")
     elif not(isinstance(GILoSA.target_distribution, np.ndarray)) and not(isinstance(GILoSA.source_distribution, np.ndarray)):
-        GILoSA.convert_distribution_to_array(use_orientation=False) #this needs to be a function of every sensor class
+        GILoSA.convert_distribution_to_array(use_orientation=True) #this needs to be a function of every sensor class
         # if you want to use the orientation, you can use
         #GILoSA.convert_distribution_to_array(use_orientation=True) #this needs to be a function of every sensor class
 
@@ -117,7 +121,7 @@ if __name__ == '__main__':
     time.sleep(1)
     print("Find the transported policy")
     # GILoSA.kernel_transport=C(0.1,[0.1,0.1]) * RBF(length_scale=[0.3], length_scale_bounds=[0.1,1]) + WhiteKernel(0.000001, [0.000001,0.000001])
-    GILoSA.kernel_transport=C(0.1) * RBF(length_scale=[0.3],  length_scale_bounds=[0.2,0.5]) + WhiteKernel(0.0000001, [0.0000001,0.0000001])
+    GILoSA.kernel_transport=C(0.1) * RBF(length_scale=[0.1],  length_scale_bounds=[0.1,0.5]) + WhiteKernel(0.0000001, [0.0000001,0.0000001])
 
     GILoSA.fit_transportation()
     GILoSA.apply_transportation()
@@ -158,7 +162,7 @@ if __name__ == '__main__':
     GILoSA.mu_index=0
     GILoSA.Interactive_Control()
    
-    i=i+1
+    i=i+1    
     #%%
     GILoSA.Passive()
 
