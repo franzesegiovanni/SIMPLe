@@ -5,7 +5,7 @@ Cognitive Robotics, TU Delft
 This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
-from SIMPLe import SIMPLe
+from modules import GILoSA_tag
 import time
 from geometry_msgs.msg import PoseStamped
 import rospy
@@ -15,7 +15,7 @@ import pickle
 #%%
 if __name__ == '__main__':
     rospy.init_node('GILoSA', anonymous=True)
-    GILoSA=SIMPLe()
+    GILoSA=GILoSA_tag()
     GILoSA.connect_ROS()
     time.sleep(1)
 

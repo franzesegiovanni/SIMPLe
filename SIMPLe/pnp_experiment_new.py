@@ -3,9 +3,11 @@ Authors: Giovanni Franzese and Ravi Prakash
 Email: g.franzese@tudelft.nl
 Cognitive Robotics, TU Delft
 This code is part of TERI (TEaching Robots Interactively) project
+
+This is the code used for the experiment of reshalving 
 """
 #%%
-from SIMPLe import SIMPLe
+from modules import GILoSA_tag
 import time
 from geometry_msgs.msg import PoseStamped
 import rospy
@@ -16,7 +18,7 @@ from copy import copy
 #%%
 if __name__ == '__main__':
     rospy.init_node('GILoSA', anonymous=True)
-    GILoSA=SIMPLe()
+    GILoSA=GILoSA_tag()
     GILoSA.connect_ROS()
 
     GILoSA.null_stiff=[0]

@@ -5,17 +5,17 @@ Cognitive Robotics, TU Delft
 This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
-from SIMPLe import SIMPLe
+from modules import GILoSA_tag
 import time
 from geometry_msgs.msg import PoseStamped
 import rospy
-from sklearn.gaussian_process.kernels import RBF, Matern,WhiteKernel, ConstantKernel as C
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
 import numpy as np
 import pickle
 #%%
 if __name__ == '__main__':
     rospy.init_node('GILoSA', anonymous=True)
-    GILoSA=SIMPLe()
+    GILoSA=GILoSA_tag()
     GILoSA.connect_ROS()
     time.sleep(1)
 
