@@ -12,11 +12,14 @@ import rospy
 from sklearn.gaussian_process.kernels import RBF, Matern,WhiteKernel, ConstantKernel as C
 import numpy as np
 import pickle
+from copy import copy
 #%%
 if __name__ == '__main__':
     rospy.init_node('GILoSA', anonymous=True)
     GILoSA=SIMPLe()
     GILoSA.connect_ROS()
+
+    GILoSA.null_stiff=[0]
     time.sleep(1)
 
   
@@ -35,31 +38,33 @@ if __name__ == '__main__':
 
 
 
-
-
-
     #%%
-    time.sleep(1)
-    print("Record of the source disributions")
+ 
     GILoSA.go_to_pose(GILoSA.view_marker)
-    time.sleep(2)
-
-
-    #%%
-    GILoSA.record_source_distribution() 
-    print("Source len",len(GILoSA.source_distribution))
-    GILoSA.record_target_distribution() 
-
-    print("Save the  source distribution data") 
-    GILoSA.save_distributions()   
-
+    GILoSA.record_source_distribution()
     f = open("results/pnp/source.pkl","wb")
     # write the python object (dict) to pickle file
     pickle.dump(GILoSA.source_distribution,f)
     # close file
     f.close()  
 
+    #%%
+    GILoSA.record_source_distribution()
+    #%%
+    GILoSA.Record_traj_tags()
 
+    #%%
+    GILoSA.save_traj_tags()
+
+    #%%
+    GILoSA.load_traj_tags()
+    #%%
+    GILoSA.source_distribution=[]
+    GILoSA.target_distribution=[]
+    GILoSA.source_distribution=GILoSA.Record_tags(GILoSA.source_distribution)
+    print("Source len",len(GILoSA.source_distribution))
+    print("Save the  source distribution data") 
+    GILoSA.save_distributions()  
     #%%
     time.sleep(1)
     print("Record of the cartesian trajectory")
@@ -82,18 +87,14 @@ if __name__ == '__main__':
     #%%
     i=0
 
-
-    #%%
-    time.sleep(1)
-    print("Record of the target disributions")
-    GILoSA.go_to_pose(GILoSA.view_marker)
-    time.sleep(2)
-
     #%%
     GILoSA.load_distributions()     #load source 
     GILoSA.load()
+    GILoSA.load_traj_tags()
     #%%
-    GILoSA.record_target_distribution() 
+    GILoSA.target_distribution=[]
+    GILoSA.target_distribution=GILoSA.Record_tags(GILoSA.target_distribution)
+
     print("Target len", len(GILoSA.target_distribution) )
     # Save start configuration
 
@@ -108,7 +109,7 @@ if __name__ == '__main__':
     if type(GILoSA.target_distribution) != type(GILoSA.source_distribution):
         raise TypeError("Both the distribution must be a numpy array.")
     elif not(isinstance(GILoSA.target_distribution, np.ndarray)) and not(isinstance(GILoSA.source_distribution, np.ndarray)):
-        GILoSA.convert_distribution_to_array(use_orientation=True) #this needs to be a function of every sensor class
+        GILoSA.convert_distribution_to_array(use_orientation=False) #this needs to be a function of every sensor class
         # if you want to use the orientation, you can use
         #GILoSA.convert_distribution_to_array(use_orientation=True) #this needs to be a function of every sensor class
 
@@ -116,7 +117,7 @@ if __name__ == '__main__':
     time.sleep(1)
     print("Find the transported policy")
     # GILoSA.kernel_transport=C(0.1,[0.1,0.1]) * RBF(length_scale=[0.3], length_scale_bounds=[0.1,1]) + WhiteKernel(0.000001, [0.000001,0.000001])
-    GILoSA.kernel_transport=C(0.1) * RBF(length_scale=[0.30],  length_scale_bounds=[0.05,0.40]) + WhiteKernel(0.0000001, [0.0000001,0.0000001])
+    GILoSA.kernel_transport=C(0.1) * RBF(length_scale=[0.3],  length_scale_bounds=[0.2,0.5]) + WhiteKernel(0.0000001, [0.0000001,0.0000001])
 
     GILoSA.fit_transportation()
     GILoSA.apply_transportation()
@@ -158,7 +159,7 @@ if __name__ == '__main__':
     GILoSA.Interactive_Control()
    
     i=i+1
-   #%%
+    #%%
     GILoSA.Passive()
 
 
