@@ -17,6 +17,7 @@ if __name__ == '__main__':
     rospy.init_node('GILoSA', anonymous=True)
     GILoSA=GILoSA_tag()
     GILoSA.connect_ROS()
+
     time.sleep(1)
 
   

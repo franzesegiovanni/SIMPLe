@@ -15,6 +15,7 @@ class SIMPLe(ILoSA):
         self.control_freq=20 # [Hz]
         self.r_control=rospy.Rate(self.control_freq)
         self.r_rec=rospy.Rate(self.rec_freq)
+
     def Train_GPs(self):
         print("SIMPLe does not need to be trained")
         if len(self.nullspace_traj)>0 and len(self.nullspace_joints)>0:
