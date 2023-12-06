@@ -340,19 +340,19 @@ class DualPanda:
         self.Panda_left.index = self.Panda_right.index = self.index
 
         while 1:
-            i_left, attractor_pos_left, attractor_ori_left, stiff_msg_left, beta_left= self.Panda_left.GGP()
+            i_left, attractor_pos_left, attractor_ori_left, beta_left= self.Panda_left.GGP()
                 
-            i_right, attractor_pos_right, attractor_ori_right, stiff_msg_right, beta_right= self.Panda_right.GGP()
+            i_right, attractor_pos_right, attractor_ori_right, beta_right= self.Panda_right.GGP()
             
             attractor_pos_left = [self.Panda_left.execution_traj[0][i_right], self.Panda_left.execution_traj[1][i_right], self.Panda_left.execution_traj[2][i_right]]
             attractor_ori_left = [self.Panda_left.execution_ori[0][i_right], self.Panda_left.execution_ori[1][i_right], self.Panda_left.execution_ori[2][i_right],self.Panda_left.execution_ori[3][i_right]]
             stiff_msg_left = Float32MultiArray()
-            stiff_msg_left.data =beta_left* np.array([self.Panda_left.execution_stiff_lin[0][i_right], self.Panda_left.execution_stiff_lin[1][i_right], self.Panda_left.execution_stiff_lin[2][i_right], self.Panda_left.execution_stiff_ori[0][i_right],self.Panda_left.execution_stiff_ori[1][i_right],self.Panda_left.execution_stiff_ori[2][i_right], 0.0]).astype(np.float32)
+            stiff_msg_left.data =np.array([self.Panda_left.execution_stiff_lin[0][i_right], self.Panda_left.execution_stiff_lin[1][i_right], self.Panda_left.execution_stiff_lin[2][i_right], self.Panda_left.execution_stiff_ori[0][i_right],self.Panda_left.execution_stiff_ori[1][i_right],self.Panda_left.execution_stiff_ori[2][i_right], 0.0]).astype(np.float32)
             
             attractor_pos_right = [self.Panda_right.execution_traj[0][i_left], self.Panda_right.execution_traj[1][i_left], self.Panda_right.execution_traj[2][i_left]]
             attractor_ori_right = [self.Panda_right.execution_ori[0][i_left], self.Panda_right.execution_ori[1][i_left], self.Panda_right.execution_ori[2][i_left],self.Panda_right.execution_ori[3][i_left]]
             stiff_msg_right = Float32MultiArray()
-            stiff_msg_right.data =beta_right *np.array([self.Panda_right.execution_stiff_lin[0][i_left], self.Panda_right.execution_stiff_lin[1][i_left], self.Panda_right.execution_stiff_lin[2][i_left], self.Panda_right.execution_stiff_ori[0][i_left],self.Panda_right.execution_stiff_ori[1][i_left],self.Panda_right.execution_stiff_ori[2][i_left], 0.0]).astype(np.float32)
+            stiff_msg_right.data =np.array([self.Panda_right.execution_stiff_lin[0][i_left], self.Panda_right.execution_stiff_lin[1][i_left], self.Panda_right.execution_stiff_lin[2][i_left], self.Panda_right.execution_stiff_ori[0][i_left],self.Panda_right.execution_stiff_ori[1][i_left],self.Panda_right.execution_stiff_ori[2][i_left], 0.0]).astype(np.float32)
             
             self.Panda_left.stiffness_pub.publish(stiff_msg_left)
             self.Panda_left.set_attractor(attractor_pos_left, attractor_ori_left)
@@ -400,9 +400,9 @@ class DualPanda:
         self.index = 0
         self.Panda_left.index = self.Panda_right.index = self.index
         while 1:
-            i_left, attractor_pos_left, attractor_ori_left, stiff_msg_left, beta_left= self.Panda_left.GGP()
+            i_left, attractor_pos_left, attractor_ori_left, beta_left= self.Panda_left.GGP()
                 
-            i_right, attractor_pos_right, attractor_ori_right, stiff_msg_right, beta_right= self.Panda_right.GGP()
+            i_right, attractor_pos_right, attractor_ori_right, beta_right= self.Panda_right.GGP()
             
             if np.abs(i_left-i_right)>6:
                 max_index= np.max([i_left, i_right])-4
