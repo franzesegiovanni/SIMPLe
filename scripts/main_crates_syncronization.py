@@ -6,7 +6,7 @@ This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
 import matplotlib
-from  dual_panda import DualPanda
+from  SIMPLe_bimanual.dual_panda import DualPanda
 import time
 import rospy
 from mpl_toolkits import mplot3d

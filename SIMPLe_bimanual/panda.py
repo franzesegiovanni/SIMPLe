@@ -17,7 +17,7 @@ from std_msgs.msg import Float32MultiArray, Bool
 import pathlib
 from pynput.keyboard import Listener, KeyCode
 from franka_gripper.msg import GraspActionGoal, HomingActionGoal, StopActionGoal
-from utils import get_quaternion_from_euler
+from .utils import get_quaternion_from_euler
 class Panda:
     
     def __init__(self, rec_frequency,control_frequency, ff_pos, ff_stiff_lin, arm_id=''):

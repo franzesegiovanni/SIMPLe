@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>SIMPLe</name>
+  <version>0.1.0</version>
+  <description>Safe Interactive Movement Primitives Learning</description>
+
+  <maintainer email="g.franzese@tudelft.nl">Giovanni Franzese</maintainer>
+
+  <license>MIT License</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+</package>
+
+
+
+
+
+

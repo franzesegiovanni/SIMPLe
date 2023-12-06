@@ -15,7 +15,7 @@ import dynamic_reconfigure.client
 from std_msgs.msg import Float32MultiArray
 import pathlib
 from pynput.keyboard import Listener, KeyCode
-from panda import Panda
+from .panda import Panda
 
 class DualPanda:
     def __init__(self, arm_id_right='panda_right', arm_id_left='panda_left'):

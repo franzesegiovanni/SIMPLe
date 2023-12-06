@@ -14,9 +14,6 @@ import matplotlib.pyplot as plt
 #%%
 if __name__ == '__main__':
     BiManualTeaching=DualPanda()
-#time.sleep(1)
-# BiManualTeaching.Panda_left.home_gripper()
-# BiManualTeaching.Panda_right.home_gripper()
     time.sleep(1)
     #%%
     BiManualTeaching.Panda_right.load()
