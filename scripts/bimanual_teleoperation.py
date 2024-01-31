@@ -23,24 +23,7 @@ from sensor_msgs.msg import Joy
 from pynput.keyboard import Listener, KeyCode
 from scipy.spatial.transform import Rotation
 
-def get_quaternion_from_euler(roll, pitch, yaw):
-  """
-  Convert an Euler angle to a quaternion.
-   
-  Input
-    :param roll: The roll (rotation around x-axis) angle in radians.
-    :param pitch: The pitch (rotation around y-axis) angle in radians.
-    :param yaw: The yaw (rotation around z-axis) angle in radians.
- 
-  Output
-    :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
-  """
-  qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-  qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-  qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-  qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
- 
-  return [ qw ,qx, qy, qz]
+from SIMPLe_bimanual.utils import get_quaternion_from_euler
 
 class BiManualTeleoperation():
     def __init__(self):
@@ -86,16 +69,7 @@ class BiManualTeleoperation():
 
   
     def control(self):
-        # robot = rtb.models.DH.Panda()
-        # local_pos = curr_pos.reshape(1, 3)
-        # x_new = local_pos[0][0]
-        # y_new = local_pos[0][1]
-        # z_new = local_pos[0][2]
-        # joint=self.curr_orijoint_pos[0:7].reshape(1, -1)
-        # fw_pose = robot.fkine(joint)
-        # goal_ori = fw_pose.R
-        # rot = Rotation.from_quat(self.curr_ori)
-        # goal_ori_eul = rot.as_euler('xyz')
+
         panda_right_goal = PoseStamped()
         panda_right_goal.header.seq = 1
         panda_right_goal.header.stamp = rospy.Time.now()
@@ -133,10 +107,8 @@ class BiManualTeleoperation():
             panda_right_goal.pose.position.x = panda_right_goal.pose.position.x + self.panda_right_offset[0]
             panda_right_goal.pose.position.y = panda_right_goal.pose.position.y + self.panda_right_offset[1]
             panda_right_goal.pose.position.z = panda_right_goal.pose.position.z + self.panda_right_offset[2]
-            # panda_right_alpha_beta_gamma=np.array([self.panda_right_offset[3], self.panda_right_offset[4], self.panda_right_offset[5]])
             q_delta=get_quaternion_from_euler(self.panda_right_offset[3],self.panda_right_offset[4],self.panda_right_offset[5])
             panda_right_q_delta=np.quaternion(q_delta[0],q_delta[1],q_delta[2],q_delta[3])
-            # panda_right_q_delta=from_euler_angles(panda_right_alpha_beta_gamma)  
             panda_right_quat_goal=panda_right_q_delta*panda_right_quat_goal
 
             panda_right_goal.pose.orientation.w = panda_right_quat_goal.w   
@@ -149,10 +121,8 @@ class BiManualTeleoperation():
             panda_left_goal.pose.position.x = panda_left_goal.pose.position.x + self.panda_left_offset[0]
             panda_left_goal.pose.position.y = panda_left_goal.pose.position.y + self.panda_left_offset[1]
             panda_left_goal.pose.position.z = panda_left_goal.pose.position.z + self.panda_left_offset[2]
-            # panda_left_alpha_beta_gamma=np.array([self.panda_left_offset[3], self.panda_left_offset[4], self.panda_left_offset[5]])
             q_delta=get_quaternion_from_euler(self.panda_left_offset[3],self.panda_left_offset[4],self.panda_left_offset[5])
             panda_left_q_delta=np.quaternion(q_delta[0],q_delta[1],q_delta[2],q_delta[3])
-            # panda_left_q_delta=from_euler_angles(panda_left_alpha_beta_gamma)  
             panda_left_quat_goal=panda_left_q_delta*panda_left_quat_goal
 
             panda_left_goal.pose.orientation.w = panda_left_quat_goal.w   
