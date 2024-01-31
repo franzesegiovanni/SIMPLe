@@ -56,11 +56,7 @@ class SIMPLe(ILoSA):
         else:
             beta=1
             self.mu_index = int(self.mu_index+ 1.0*np.sign((int(np.argmax(k_start_time_position))- self.mu_index)))
-
-        if any(np.abs(np.array(self.feedback)) > 0.05): # this avoids to activate the feedback on noise joystick
-            print("Received Feedback")
-            self.training_traj=self.training_traj+ np.array(self.feedback)*k_start_time_position
-             
+     
         self.index=np.min([self.mu_index+look_ahead, n_samples-1])
 
         return  self.index, beta
