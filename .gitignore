@@ -124,3 +124,7 @@ franka_gripper/msg/__pycache__/_StopActionResult.cpython-38.pyc
 franka_gripper/msg/__pycache__/_StopFeedback.cpython-38.pyc
 franka_gripper/msg/__pycache__/_StopGoal.cpython-38.pyc
 franka_gripper/msg/__pycache__/_StopResult.cpython-38.pyc
+SIMPLe/__pycache__/SIMPLe.cpython-38.pyc
+SIMPLe_bimanual/__pycache__/dual_panda.cpython-38.pyc
+SIMPLe_bimanual/__pycache__/panda.cpython-38.pyc
+SIMPLe_bimanual/__pycache__/utils.cpython-38.pyc
