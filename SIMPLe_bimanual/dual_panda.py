@@ -7,12 +7,9 @@ This code is part of TERI (TEaching Robots Interactively) project
 #%%
 # !/usr/bin/env python
 import rospy
-import math
 import numpy as np
 import quaternion
 from geometry_msgs.msg import  PoseStamped
-import dynamic_reconfigure.client
-from std_msgs.msg import Float32MultiArray
 import pathlib
 from pynput.keyboard import Listener, KeyCode
 from .panda import Panda
@@ -31,8 +28,8 @@ class DualPanda:
 
         self.target_coupling_stiffness = 200
 
-        self.Panda_right = Panda(self.rec_freq, self.control_freq, self.feedback_factor_pos, self.feedback_factor_stiffness, arm_id_right)
-        self.Panda_left = Panda(self.rec_freq, self.control_freq, self.feedback_factor_pos, self.feedback_factor_stiffness, arm_id_left)
+        self.Panda_right = Panda( self.control_freq, arm_id_right)
+        self.Panda_left = Panda( self.control_freq, arm_id_left)
         
         self.coupling_diff_pub = rospy.Publisher("/panda_dual/bimanual_cartesian_impedance_controller/equilibrium_distance", PoseStamped, queue_size=0)
       
@@ -59,14 +56,6 @@ class DualPanda:
             self.Panda_left.end = True
             self.Panda_right.end = True
 
-        if key == KeyCode.from_char('u') and (self.Panda_left.recording or not self.Panda_left.completed):
-            self.Panda_left.pause = not self.Panda_left.pause
-            print(f"Panda left pause toggled, state: {self.Panda_left.pause}")
-
-        if key == KeyCode.from_char('i') and (self.Panda_right.recording or not self.Panda_right.completed):
-            self.Panda_right.pause = not self.Panda_right.pause
-            print(f"Panda right toggled, state: {self.Panda_right.pause}")
-
     def Kinesthetic_Demonstration_BiManual(self, active=False):
         """
         Funtion to record a bimanual demonstration.
@@ -76,7 +65,6 @@ class DualPanda:
         manipulators' stiffness is not dropped to zero. You can for example learn to synchronize what two
         manipulators are doing
         """
-        # self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
 
         r = rospy.Rate(self.control_freq)
         
@@ -114,17 +102,13 @@ class DualPanda:
                 self.Panda_left.K_ori, self.Panda_left.K_ori, self.Panda_left.K_ori])]
             r.sleep()
 
-    def execute_dual(self, record=False):
+    def execute_dual(self):
         """
         Function to execute a bimanual demonstration. This execution will pause if one of the arms is outside their
-        respective attractor distance threshold and thus cannot be used for synchronisation.
+        respective attractor distance threshold
         """
-        # self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
         r = rospy.Rate(self.control_freq)
 
-        self.Panda_left.pause = False
-        self.Panda_right.pause = False
-           
         self.index = 0
         self.Panda_left.index = self.Panda_right.index = self.index
 
@@ -167,9 +151,6 @@ class DualPanda:
 
         while self.index < self.recorded_traj_dual.shape[1]:
 
-            while self.Panda_left.pause or self.Panda_right.pause:
-                r.sleep()
-
             r = rospy.Rate(self.control_freq)
 
 
@@ -187,10 +168,6 @@ class DualPanda:
 
                 self.Panda_right.set_attractor(position_right, orientation_right)
                 self.Panda_left.set_attractor(position_left, orientation_left)
-
-                # Develop better strategy for the gripper 
-                # self.Panda_right.move_gripper(self.recorded_gripper_dual[0, self.index])
-                # self.Panda_left.move_gripper(self.recorded_gripper_dual[1, self.index])
 
                 # Code to calculate the difference between the arms and publish it to the coupling topic
                 d_coupling = np.array(position_right) - np.array(position_left)
