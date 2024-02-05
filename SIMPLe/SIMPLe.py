@@ -3,7 +3,7 @@ import numpy as np
 from ILoSA import InteractiveGP
 from ILoSA.data_prep import slerp_sat
 import pickle
-from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel, ConstantKernel as C
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
 import rospy
 class SIMPLe(ILoSA):
 
@@ -40,7 +40,9 @@ class SIMPLe(ILoSA):
         position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)/labda_position
 
         #calcolation of correlation in time
-        index_error= np.abs(np.arange(n_samples)-self.index)/lambda_index
+        index=np.min([self.mu_index+look_ahead, n_samples-1])
+
+        index_error= np.abs(np.arange(n_samples)-index)/lambda_index
         index_error_clip= np.clip(index_error, 0, 1)
 
         # Calculate the product of the two correlation vectors
@@ -57,9 +59,20 @@ class SIMPLe(ILoSA):
             beta=1
             self.mu_index = int(self.mu_index+ 1.0*np.sign((int(np.argmax(k_start_time_position))- self.mu_index)))
      
-        self.index=np.min([self.mu_index+look_ahead, n_samples-1])
+        control_index=np.min([self.mu_index+look_ahead, n_samples-1])
 
-        return  self.index, beta
+        return  control_index, beta
+
+
+    def initialize_mu_index(self):
+        # position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)
+        # self.mu_index = int(np.argmin(position_error))
+        self.mu_index=0
+        self.index=0
+
+    def control(self):
+        self.initialize_mu_index()
+        self.Interactive_Control()
 
     def step(self):
         
@@ -78,7 +91,5 @@ class SIMPLe(ILoSA):
         K_ori_scaled =beta*self.K_ori
         pos_stiff = [K_lin_scaled,K_lin_scaled,K_lin_scaled]
         rot_stiff = [K_ori_scaled,K_ori_scaled,K_ori_scaled]
-        # self.pos_stiff = self.K_mean*beta*np.ones([1,3]) 
-        # self.rot_stiff = self.K_ori*beta*np.ones([1,3])  
 
         self.set_stiffness(pos_stiff, rot_stiff, self.null_stiff)    
