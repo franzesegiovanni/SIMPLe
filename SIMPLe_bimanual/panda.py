@@ -15,7 +15,7 @@ from geometry_msgs.msg import PoseStamped
 import dynamic_reconfigure.client
 from std_msgs.msg import Float32MultiArray, Bool
 import pathlib
-from pynput.keyboard import Listener, KeyCode
+from pynput.keyboard import Listener, Key
 from franka_gripper.msg import GraspActionGoal, HomingActionGoal, StopActionGoal
 from SIMPLe_bimanual.ggp import GGP
 class Panda:
@@ -103,7 +103,7 @@ class Panda:
 
     def _on_press(self, key):
         # This function runs on the background and checks if a keyboard key was pressed
-        if key == KeyCode.from_char('e'):
+        if key == Key.esc:
             self.end = True
 
     def ee_pose_callback(self, data):
@@ -217,7 +217,7 @@ class Panda:
                 r.sleep()
         
         start.data = False
-        print('end_trajactory')
+        print('Stopped execution of the behaviour of' + str(self.name))
 
 
 
@@ -279,7 +279,7 @@ class Panda:
 
         self.end = False
 
-        print("Recording started. Press e to stop and press u to pause/continue.")
+        print("Recording started. Press Esc to stop the recording")
 
         self.recorded_traj = self.cart_pos
         self.recorded_ori = self.cart_ori
