@@ -11,8 +11,8 @@ import time
 if __name__ == '__main__':
     BiManualTeaching=DualPanda()
     time.sleep(1)
-    BiManualTeaching.Panda_left.home_gripper()
-    BiManualTeaching.Panda_right.home_gripper()
+    # BiManualTeaching.Panda_left.home_gripper()
+    # BiManualTeaching.Panda_right.home_gripper()
     #%%
     BiManualTeaching.Kinesthetic_Demonstration_BiManual()
     #%%
@@ -29,11 +29,18 @@ if __name__ == '__main__':
     BiManualTeaching.Panda_left.move_gripper(1.0)
     BiManualTeaching.Panda_right.move_gripper(1.0)
     #%%
+    BiManualTeaching.Panda_left.set_K.update_configuration({"coupling_translational_stiffness": 0})
+
     BiManualTeaching.Kinesthetic_Demonstration_BiManual()
+    # %%
+    BiManualTeaching.go_to_start()
     #%%
     BiManualTeaching.execute_dual()
     # %%
-    BiManualTeaching.save(data='conductor')
+    BiManualTeaching.save(data='conductor_linda')
     #%%
-    BiManualTeaching.load(data='conductor')
+    BiManualTeaching.load(data='conductor_linda')
+    # %%
+    BiManualTeaching.Panda_left.home_gripper()
+    BiManualTeaching.Panda_right.home_gripper()
 # %%

@@ -11,12 +11,14 @@ import time
 if __name__ == '__main__':
     BiManualTeaching=DualPanda()
     time.sleep(1)
+    # BiManualTeaching.Panda_left.home_gripper()
+    # BiManualTeaching.Panda_right.home_gripper()
     #%%
     BiManualTeaching.Kinesthetic_Demonstration_BiManual()
     #%%
-    BiManualTeaching.save(data='collaboration')
+    BiManualTeaching.save(data='collaboration2')
     #%%
-    BiManualTeaching.load(data='collaboration')
+    BiManualTeaching.load(data='collaboration2')
     # %%
     BiManualTeaching.go_to_start()
     #%%
@@ -33,4 +35,7 @@ if __name__ == '__main__':
     BiManualTeaching.Panda_left.move_gripper(1.0)
     BiManualTeaching.Panda_right.move_gripper(1.0)
 
+    # %%
+    BiManualTeaching.Panda_left.home_gripper()
+    BiManualTeaching.Panda_right.home_gripper()
 # %%
