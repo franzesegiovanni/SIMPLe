@@ -11,7 +11,7 @@ import numpy as np
 import quaternion
 from geometry_msgs.msg import  PoseStamped
 import pathlib
-from pynput.keyboard import Listener, KeyCode
+from pynput.keyboard import Listener, Key
 from .panda import Panda
 
 class DualPanda:
@@ -19,7 +19,6 @@ class DualPanda:
         rospy.init_node('DualArmControl', anonymous=True)
   
         self.control_freq = 30
-        self.rec_freq = 30
 
         # Factors that multiply the feedback from the Spacemouse to allow for more rough or granular control
         self.feedback_factor_pos = 0.02
@@ -51,7 +50,7 @@ class DualPanda:
         """
         Function that runs in the background and checks for a key press
         """
-        if key == KeyCode.from_char('e'):
+        if key == Key.esc:
             self.end = True
             self.Panda_left.end = True
             self.Panda_right.end = True
@@ -149,9 +148,10 @@ class DualPanda:
 
         self.Panda_left.set_K.update_configuration({"coupling_translational_stiffness": self.target_coupling_stiffness})
 
-        while self.index < self.recorded_traj_dual.shape[1]:
 
-            r = rospy.Rate(self.control_freq)
+        r = rospy.Rate(self.control_freq)
+
+        while self.index < self.recorded_traj_dual.shape[1]:
 
 
             if self.continue_dual_traj(self.index, self.recorded_traj_dual):

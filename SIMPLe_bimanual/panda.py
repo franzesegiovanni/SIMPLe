@@ -24,9 +24,6 @@ class Panda:
     
         self.control_freq = control_frequency
 
-        # The execution factor is a multiplier used to accelerate or slow down an execution
-        self.execution_factor = 1
-
         self.name = arm_id
 
         # Distance threshold of the current cart position and the first point of the trajectory.
@@ -47,12 +44,6 @@ class Panda:
 
         # The index variable is updated to allow for easy access to the current index position within the execution trajectory
         self.index = 0
-
-        # Execution variables used to for corrections
-        self.execution_traj = np.zeros(3)
-        self.execution_ori = np.zeros(3)
-        self.execution_stiff_lin = np.zeros(3)
-        self.execution_stiff_ori = np.zeros(3)
 
         self.gripper_width = 0
         self.grip_command.goal.epsilon.inner = 0.3
@@ -185,15 +176,8 @@ class Panda:
 
         if start.data is True:
             self.end = False
-    
-            self.execution_traj = np.asarray(self.recorded_traj)
-            self.execution_ori = np.asarray(self.recorded_ori)
-            self.execution_gripper = np.asarray(self.recorded_gripper)
-            self.execution_stiff_lin = np.asarray(self.recorded_stiffness_lin)
-            self.execution_stiff_ori = np.asarray(self.recorded_stiffness_ori)
-            
 
-            traj_starting_position = [self.execution_traj[0][0], self.execution_traj[1][0], self.execution_traj[2][0]]
+            traj_starting_position = [self.recorded_traj[0][0], self.recorded_traj[1][0], self.recorded_traj[2][0]]
 
             if self.start_safety_check(traj_starting_position) == False:
                 return            
@@ -201,19 +185,20 @@ class Panda:
 
             ggp=GGP(execution_traj=self.recorded_traj)
 
-
+            r = rospy.Rate(self.control_freq)
+            
             while not self.end:
-                r = rospy.Rate(self.control_freq)
+
 
    
                 i, beta= ggp.step(cart_pos=self.cart_pos)
 
-                attractor_pos = [self.execution_traj[0][i], self.execution_traj[1][i], self.execution_traj[2][i]]
-                attractor_ori = [self.execution_ori[0][i], self.execution_ori[1][i], self.execution_ori[2][i],self.execution_ori[3][i]]
+                attractor_pos = [self.recorded_traj[0][i], self.recorded_traj[1][i], self.recorded_traj[2][i]]
+                attractor_ori = [self.recorded_ori[0][i], self.recorded_ori[1][i], self.recorded_ori[2][i],self.recorded_ori[3][i]]
 
-                self.set_stiffness(beta *self.execution_stiff_lin[0][i], beta *self.execution_stiff_lin[1][i], beta *self.execution_stiff_lin[2][i], beta *self.execution_stiff_ori[0][i], beta *self.execution_stiff_ori[1][i], beta *self.execution_stiff_ori[2][i])
+                self.set_stiffness(beta *self.recorded_stiff_lin[0][i], beta *self.recorded_stiff_lin[1][i], beta *self.recorded_stiff_lin[2][i], beta *self.recorded_stiff_ori[0][i], beta *self.recorded_stiff_ori[1][i], beta *self.recorded_stiff_ori[2][i])
                 self.set_attractor(attractor_pos, attractor_ori)
-                self.move_gripper(self.execution_gripper[0, i])
+                self.move_gripper(self.recorded_gripper[0, i])
                 r.sleep()
         
         start.data = False
@@ -273,7 +258,7 @@ class Panda:
 
     def Kinesthetic_Demonstration(self, active=False):
         time.sleep(1)
-        r = rospy.Rate(self.control_freq*self.execution_factor)
+        r = rospy.Rate(self.control_freq)
         if not active:
             self.set_stiffness(0, 0, 0, 0, 0, 0)
 
