@@ -15,15 +15,13 @@ from geometry_msgs.msg import PoseStamped
 import dynamic_reconfigure.client
 from std_msgs.msg import Float32MultiArray, Bool
 import pathlib
-from pynput.keyboard import Listener, KeyCode
+from pynput.keyboard import Listener, Key
 from franka_gripper.msg import GraspActionGoal, HomingActionGoal, StopActionGoal
-from .utils import get_quaternion_from_euler
+from SIMPLe_bimanual.ggp import GGP
 class Panda:
     
-    def __init__(self, rec_frequency,control_frequency, ff_pos, ff_stiff_lin, arm_id=''):
-        # ff = feedback_factor
+    def __init__(self, control_frequency=30, arm_id=''):
     
-        self.rec_freq = rec_frequency
         self.control_freq = control_frequency
 
         # The execution factor is a multiplier used to accelerate or slow down an execution
@@ -66,24 +64,6 @@ class Panda:
         self.attractor_distance_threshold = 0.08
         self.trajectory_distance_threshold = 0.08
 
-        self.length_scale = 0.05
-        self.correction_window = 50
-        self.correction_mode = 0
-
-        self.feedback = np.zeros(3)
-        self.offset = [0, 0, 0, 0, 0, 0]
-        self.btn = np.zeros(2)
-        self.enable_corr = False
-        self.completed = True
-        self.pause = False
-        self.recording = False
-        self.external_record = True
-
-        self.feedback_factor_pos=0.01
-        self.feedback_factor_ori=0.001
-        self.feedback_factor_stiff_lin=1
-        self.feedback_factor_stiff_ori=0.1
-
         self.mu_index=0.0
         rospy.Subscriber("/panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_cartesian_pose",
                          PoseStamped, self.ee_pose_callback)
@@ -109,7 +89,7 @@ class Panda:
         self.stiffness_pub = rospy.Publisher("/" + str(self.name) + "/stiffness", Float32MultiArray,
                                           queue_size=0)
 
-        self.nullspace_stiffness_pub = rospy.Publisher("/panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_nullspace", JointState,
+        self.nullspace_configuration_pub = rospy.Publisher("/panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_nullspace", JointState,
                                           queue_size=0)
 
         rospy.Subscriber("panda_dual/" + str(self.name) + "/goto", PoseStamped, self.go_to_3d)
@@ -123,7 +103,7 @@ class Panda:
 
     def _on_press(self, key):
         # This function runs on the background and checks if a keyboard key was pressed
-        if key == KeyCode.from_char('e'):
+        if key == Key.esc:
             self.end = True
 
     def ee_pose_callback(self, data):
@@ -132,7 +112,7 @@ class Panda:
                          data.pose.orientation.z]
 
     def stiffness_callback(self, stiffness):
-        self.set_stiffness(stiffness.data[0],stiffness.data[1],stiffness.data[2],stiffness.data[3],stiffness.data[4],stiffness.data[5],stiffness.data[6])
+        self.set_stiffness(stiffness.data[0],stiffness.data[1],stiffness.data[2],stiffness.data[3],stiffness.data[4],stiffness.data[5])
 
     # joint angle subscriber
     def joint_callback(self, data):
@@ -158,7 +138,7 @@ class Panda:
         self.stop_pub.publish(self.stop_command)
 
 
-    def set_stiffness(self, k_t1, k_t2, k_t3, k_r1, k_r2, k_r3, k_ns):
+    def set_stiffness(self, k_t1, k_t2, k_t3, k_r1, k_r2, k_r3):
 
         self.set_K.update_configuration({str(self.name) + "_translational_stiffness_X": k_t1})
         self.set_K.update_configuration({str(self.name) + "_translational_stiffness_Y": k_t2})
@@ -166,13 +146,12 @@ class Panda:
         self.set_K.update_configuration({str(self.name) + "_rotational_stiffness_X": k_r1})
         self.set_K.update_configuration({str(self.name) + "_rotational_stiffness_Y": k_r2})
         self.set_K.update_configuration({str(self.name) + "_rotational_stiffness_Z": k_r3})
-        # self.set_K.update_configuration({str(self.name) + "_nullspace_stiffness": k_ns})
 
     def Active(self):
-        self.set_stiffness(400.0, 400.0, 400.0, 30.0, 30.0, 30.0, 0.0)
+        self.set_stiffness(400.0, 400.0, 400.0, 30.0, 30.0, 30.0)
 
     def Passive(self):
-        self.set_stiffness(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        self.set_stiffness(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     def set_attractor(self, pos, quat):
         goal = PoseStamped()
@@ -200,64 +179,11 @@ class Panda:
         goal.data = True
         self.execute_pub.publish(goal)
 
-    def execute_test(self):
-        self.update_params()
+    def execute(self, start): #call back function that executes the trajectory using a Graph Gaussian Process
 
-        self.pause = False
-        
-        if 1:
-            self.completed = False
-            self.end = False
-    
-            self.execution_traj = np.asarray(self.recorded_traj)
-            self.execution_ori = np.asarray(self.recorded_ori)
-            self.execution_gripper = np.asarray(self.recorded_gripper)
-            self.execution_stiff_lin = np.asarray(self.recorded_stiffness_lin)
-            self.execution_stiff_ori = np.asarray(self.recorded_stiffness_ori)
-            
-            i = 0
-            self.index = 0
-
-            i_position = [self.execution_traj[0][0], self.execution_traj[1][0], self.execution_traj[2][0]]
-
-            if self.start_safety_check(i_position) == False:
-                return            
-            
-            self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori, 0.0)
-
-            if self.external_record:
-                rospy.set_param("/dual_teaching/recording", True)
-            
-            i, attractor_pos, attractor_ori, beta= self.GGP()
-
-            while 1:
-                self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
-                r = rospy.Rate(self.control_freq*self.execution_factor)
-
-                while self.pause:
-                    r.sleep()
-
-                if (np.sum(self.offset) != 0 and self.correction_mode==1):
-                    i, attractor_pos, attractor_ori, beta= self.teleoperate(attractor_pos, attractor_ori)
-                else:    
-                    i, attractor_pos, attractor_ori, beta= self.GGP()
-                if self.end:
-                    break
-                stiff_msg = Float32MultiArray()
-                stiff_msg.data =beta * np.array([self.execution_stiff_lin[0][i], self.execution_stiff_lin[1][i], self.execution_stiff_lin[2][i], self.execution_stiff_ori[0][i],self.execution_stiff_ori[1][i],self.execution_stiff_ori[2][i], 0.0]).astype(np.float32)
-                self.stiffness_pub.publish(stiff_msg)
-                self.set_attractor(attractor_pos, attractor_ori)
-                self.move_gripper(self.execution_gripper[0, i])
-                r.sleep()
-
-    def execute(self, start):
-        self.update_params()
-
-        self.pause = False
-        self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori, 0)
+        self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori)
 
         if start.data is True:
-            self.completed = False
             self.end = False
     
             self.execution_traj = np.asarray(self.recorded_traj)
@@ -266,96 +192,34 @@ class Panda:
             self.execution_stiff_lin = np.asarray(self.recorded_stiffness_lin)
             self.execution_stiff_ori = np.asarray(self.recorded_stiffness_ori)
             
-            i = 0
-            self.index = 0
 
-            i_position = [self.execution_traj[0][0], self.execution_traj[1][0], self.execution_traj[2][0]]
+            traj_starting_position = [self.execution_traj[0][0], self.execution_traj[1][0], self.execution_traj[2][0]]
 
-            if self.start_safety_check(i_position) == False:
+            if self.start_safety_check(traj_starting_position) == False:
                 return            
-            
 
-            if self.external_record:
-                rospy.set_param("/dual_teaching/recording", True)
 
-            self.mu_index=0.0
+            ggp=GGP(execution_traj=self.recorded_traj)
 
-            i, attractor_pos, attractor_ori, beta= self.GGP()
 
-            while 1: #i < (self.execution_traj.shape[1])-1:
-                #print(i)
-                self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
-                r = rospy.Rate(self.control_freq*self.execution_factor)
+            while not self.end:
+                r = rospy.Rate(self.control_freq)
 
-                while self.pause:
-                    r.sleep()
+   
+                i, beta= ggp.step(cart_pos=self.cart_pos)
 
-                if (np.sum(self.offset) != 0 and self.correction_mode==1):
-                    i, attractor_pos, attractor_ori, beta= self.teleoperate(attractor_pos, attractor_ori)
-                else:    
-                    i, attractor_pos, attractor_ori, beta= self.GGP()
-                if self.end:
-                    break
-                stiff_msg = Float32MultiArray()
-                stiff_msg.data =beta * np.array([self.execution_stiff_lin[0][i], self.execution_stiff_lin[1][i], self.execution_stiff_lin[2][i], self.execution_stiff_ori[0][i],self.execution_stiff_ori[1][i],self.execution_stiff_ori[2][i], 0.0]).astype(np.float32)
-                self.stiffness_pub.publish(stiff_msg)
+                attractor_pos = [self.execution_traj[0][i], self.execution_traj[1][i], self.execution_traj[2][i]]
+                attractor_ori = [self.execution_ori[0][i], self.execution_ori[1][i], self.execution_ori[2][i],self.execution_ori[3][i]]
+
+                self.set_stiffness(beta *self.execution_stiff_lin[0][i], beta *self.execution_stiff_lin[1][i], beta *self.execution_stiff_lin[2][i], beta *self.execution_stiff_ori[0][i], beta *self.execution_stiff_ori[1][i], beta *self.execution_stiff_ori[2][i])
                 self.set_attractor(attractor_pos, attractor_ori)
                 self.move_gripper(self.execution_gripper[0, i])
                 r.sleep()
-                
-
-            if self.external_record:
-                rospy.set_param("/dual_teaching/recording", False)
-
-            if not self.recording: #if self.recording is on, the trajectory if overwritten after the execution
-                self.recorded_traj = np.asarray(self.execution_traj)
-                self.recorded_ori = np.asarray(self.execution_ori)
-                self.recorded_gripper = np.asarray(self.execution_gripper)
-                self.recorded_stiffness_lin = np.asarray(self.execution_stiff_lin)
-                self.recorded_stiffness_ori = np.asarray(self.execution_stiff_ori)
         
         start.data = False
-        self.completed = True
-        print('end_trajactory')
+        print('Stopped execution of the behaviour of' + str(self.name))
 
 
-    def GGP(self):
-        look_ahead=3 # how many steps forward is the attractor for any element of the graph
-
-        labda_position=0.05
-        lamda_time=0.05
-        lambda_index=self.rec_freq*lamda_time
-        
-        sigma_treshold= 1 - np.exp(-2)
-        #calcolation of correlation in space
-        position_error= np.linalg.norm(self.execution_traj.T - np.array(self.cart_pos), axis=1)/labda_position
-
-        #calcolation of correlation in time
-        index_error= np.abs(np.arange(self.execution_traj.shape[1])-self.index)/lambda_index
-        index_error_clip= np.clip(index_error, 0, 1) #1
-
-        # Calculate the product of the two correlation vectors
-        k_start_time_position=np.exp(-position_error-index_error_clip)#k_star_position*k_star_time
-
-        # Compute the uncertainty only as a function of the correlation in space and time
-        sigma_position_time= 1- np.max(k_start_time_position)
-
-        # Compute the scaling factor for the stiffness Eq 15
-        if sigma_position_time > sigma_treshold: 
-            beta= (1-sigma_position_time)/(1-sigma_treshold)
-            self.mu_index = int(np.argmax(k_start_time_position))
-        else:
-            beta=1
-            # print(self.mu_index)
-            self.mu_index = int(self.mu_index+ 1.0*np.sign((int(np.argmax(k_start_time_position))- self.mu_index)))
-
-        i = np.min([self.mu_index+int(np.round(look_ahead*self.execution_factor)), self.execution_traj.shape[1]-1]) 
-        self.index=np.min([self.mu_index+look_ahead, self.execution_traj.shape[1]-1])
-
-        attractor_pos = [self.execution_traj[0][i], self.execution_traj[1][i], self.execution_traj[2][i]]
-        attractor_ori = [self.execution_ori[0][i], self.execution_ori[1][i], self.execution_ori[2][i],self.execution_ori[3][i]]
-
-        return  i, attractor_pos, attractor_ori, beta
 
     def go_to_start(self):
         goal = PoseStamped()
@@ -398,7 +262,7 @@ class Panda:
         orientation = [quat.w, quat.x, quat.y, quat.z]
 
         self.set_attractor(position, orientation)
-        self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori, 0)
+        self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori)
 
         for i in range(step_num):
             position = [x[i], y[i], z[i]]
@@ -407,26 +271,15 @@ class Panda:
             self.set_attractor(position, orientation)
             r.sleep()
 
-    def Kinesthetic_Demonstration(self, trigger=0.005, active=False):
-        self.update_params()
-        self.recording = True
-        self.pause = False
+    def Kinesthetic_Demonstration(self, active=False):
         time.sleep(1)
         r = rospy.Rate(self.control_freq*self.execution_factor)
-        stiff_msg = Float32MultiArray()
         if not active:
-            stiff_msg.data = np.array([0, 0, 0, 0, 0, 0, 0]).astype(np.float32)
-            self.stiffness_pub.publish(stiff_msg)
+            self.set_stiffness(0, 0, 0, 0, 0, 0)
 
         self.end = False
-        init_pos = self.cart_pos
-        vel = 0
-        print("Move robot to start recording.")
-        # while vel < trigger:
-        #     vel = math.sqrt((self.cart_pos[0] - init_pos[0]) ** 2 + (self.cart_pos[1] - init_pos[1]) ** 2 + (
-        #             self.cart_pos[2] - init_pos[2]) ** 2)
 
-        print("Recording started. Press e to stop and press u to pause/continue.")
+        print("Recording started. Press Esc to stop the recording")
 
         self.recorded_traj = self.cart_pos
         self.recorded_ori = self.cart_ori
@@ -434,9 +287,6 @@ class Panda:
         self.recorded_gripper = self.gripper_width
         self.recorded_stiffness_lin=[self.K_cart, self.K_cart, self.K_cart]
         self.recorded_stiffness_ori=[self.K_ori, self.K_ori, self.K_ori]
-
-        if self.external_record:
-            rospy.set_param("/dual_teaching/recording", True)
 
         while not self.end:
 
@@ -447,31 +297,7 @@ class Panda:
             self.recorded_stiffness_lin=np.c_[self.recorded_stiffness_lin, [self.K_cart, self.K_cart, self.K_cart]]
             self.recorded_stiffness_ori=np.c_[self.recorded_stiffness_ori, [self.K_ori, self.K_ori, self.K_ori]]
 
-            if self.pause:
-                self.set_attractor(self.cart_pos, self.cart_ori)
-
-                self.move_gripper(self.recorded_gripper[0, -1])
-            
-                stiff_msg = Float32MultiArray()
-                stiff_msg.data = np.array([600, 600, 600, 30, 30, 30, 0]).astype(np.float32)
-                self.stiffness_pub.publish(stiff_msg)
-
-                while self.pause:
-                    if self.end:
-                        break
-                    r.sleep()   
-
-                stiff_msg = Float32MultiArray()
-                stiff_msg.data = np.array([0, 0, 0, 0, 0, 0, 0]).astype(np.float32)
-                self.stiffness_pub.publish(stiff_msg)
-                self.stop_gripper()
-
             r.sleep()
-        
-        self.recording = False
-
-        if self.external_record:
-            rospy.set_param("/dual_teaching/recording", False)
             
     def save(self, data='last'):
         np.savez(str(pathlib.Path().resolve()) + '/data/' + str(self.name) + '_' + str(data) + '.npz',
@@ -484,16 +310,11 @@ class Panda:
     def load(self, file='last'):
         data = np.load(str(pathlib.Path().resolve()) + '/data/' + str(self.name) + '_' + str(file) + '.npz')
 
-        self.recorded_traj = data['recorded_traj'],
-        self.recorded_ori = data['recorded_ori'],
-        self.recorded_gripper = data['recorded_gripper'],
-        self.recorded_stiffness_lin = data['recorded_stiffness_lin'],
-        self.recorded_stiffness_ori = data['recorded_stiffness_ori'],
-        self.recorded_traj = self.recorded_traj[0]
-        self.recorded_ori = self.recorded_ori[0]
-        self.recorded_gripper = self.recorded_gripper[0]
-        self.recorded_stiffness_lin = self.recorded_stiffness_lin[0]
-        self.recorded_stiffness_ori = self.recorded_stiffness_ori[0]
+        self.recorded_traj = data['recorded_traj']
+        self.recorded_ori = data['recorded_ori']
+        self.recorded_gripper = data['recorded_gripper']
+        self.recorded_stiffness_lin = data['recorded_stiffness_lin']
+        self.recorded_stiffness_ori = data['recorded_stiffness_ori']
 
     def continue_traj(self, index, traj):
         if (np.linalg.norm(np.array(self.cart_pos)-traj[:, index])) <= self.attractor_distance_threshold:
@@ -501,76 +322,9 @@ class Panda:
         else:
             return False
      
-    def square_exp(self, lengthscale, x_1, x_2):
-        d = np.linalg.norm(x_1-x_2,2)
-        return np.exp(-d ** 2 /(2*lengthscale ** 2))
-
-
-    def correct_attractor(self, index, traj_pos, traj_ori, magnitude):
-
-        for j in range(int(max(0, index - self.correction_window)),
-                    int(min(index + self.correction_window, traj.shape[1]-1))):
-
-            square_exp= self.square_exp(self.length_scale, traj[:,j], traj[:,index])
-
-            delta_x = magnitude*self.offset[0] * square_exp
-            delta_y = magnitude*self.offset[1] * square_exp
-            delta_z = magnitude*self.feedback[2] * square_exp
-
-            q_goal=np.quaternion(traj_ori[0][j], traj_ori[1][j], traj_ori[2][j], traj_ori[3][j])
-
-            q_delta=get_quaternion_from_euler(magnitude*self.offset[3]* square_exp, magnitude*self.offset[4]* square_exp, magnitude*self.offset[5]* square_exp)
-
-            q_delta_quaternion=np.quaternion(q_delta[0],q_delta[1],q_delta[2],q_delta[3])
-
-            # panda_right_q_delta=from_euler_angles(panda_right_alpha_beta_gamma)  
-            q_goal=q_delta_quaternion*q_goal
-
-            traj_pos[0][j] += delta_x
-            traj_pos[1][j] += delta_y  
-            traj_pos[2][j] += delta_z
-            
-
-            traj_ori[0][j]= q_goal.w
-            traj_ori[1][j]= q_goal.x
-            traj_ori[2][j]= q_goal.y
-            traj_ori[3][j]= q_goal.z
-
-
-        self.offset = np.zeros(6)
-
-        return traj_pos, traj_ori
-
-    def correct_stiffness(self, index, traj, stiff,  magnitude):
-
-        for j in range(int(max(0, index - self.correction_window)),
-                       int(min(index + self.correction_window, traj.shape[1]-1))):
-            delta_K_x = magnitude*np.abs(self.feedback[0]) * self.square_exp(self.length_scale, traj[:,j], traj[:,index])
-            delta_K_y = magnitude*np.abs(self.feedback[1]) * self.square_exp(self.length_scale, traj[:,j], traj[:,index])
-            delta_K_z = magnitude*np.abs(self.feedback[2]) * self.square_exp(self.length_scale, traj[:,j], traj[:,index])
-
-            stiff[0][j] += delta_K_x
-            stiff[1][j] += delta_K_y
-            stiff[2][j] += delta_K_z
-
-        self.feedback = np.zeros(3)
-        return stiff
-
-
-    def update_params(self):
-        self.length_scale = rospy.get_param("/dual_teaching/correction_length_scale")
-        self.correction_window = rospy.get_param("/dual_teaching/correction_window_size")
-        self.execution_factor = rospy.get_param("/dual_teaching/execution_factor")
-
-        self.attractor_distance_threshold = rospy.get_param("/dual_teaching/attractor_distance_threshold")
-        self.trajectory_distance_threshold = rospy.get_param("/dual_teaching/trajectory_distance_threshold")
-
-        self.feedback_factor_pos = rospy.get_param(f"/dual_teaching/{self.name}_feedback_factor_position")
-        self.enable_corr = rospy.get_param(f"/dual_teaching/{self.name}_enable_correction")
-    
     def start_safety_check(self, t_pos):
         if np.linalg.norm(np.array(self.cart_pos)-np.array(t_pos)) > self.start_safety_threshold:
-            print(f"{self.name} is too far from the start position, please make sure the go_to_start function has been run")
+            print(f"{self.name} is too far from the start position, please make sure the go_to_start function has been run. This is for safety reasons.")
             return False
         else:
             return True
@@ -595,7 +349,7 @@ class Panda:
         ns_msg.position = [0, 0, 0, -2.4, 0, 2.4, 0]
 
         self.goto_pub.publish(goal)
-        self.nullspace_stiffness_pub.publish(ns_msg)
+        self.nullspace_configuration_pub.publish(ns_msg)
         self.set_K.update_configuration({f'{str(self.name)}_nullspace_stiffness':10})
 
         rospy.sleep(rospy.Duration(secs=5))

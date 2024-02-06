@@ -3,7 +3,7 @@ import numpy as np
 from ILoSA import InteractiveGP
 from ILoSA.data_prep import slerp_sat
 import pickle
-from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel, ConstantKernel as C
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
 import rospy
 class SIMPLe(ILoSA):
 
@@ -27,21 +27,25 @@ class SIMPLe(ILoSA):
 
 
 
-    def GGP(self):
+    def GGP(self, look_ahead=3):
         n_samples=self.training_traj.shape[0]
         look_ahead=3 # how many steps forward is the attractor for any element of the graph
 
-        labda_position=0.05
-        lamda_time=0.05
-        lambda_index=self.rec_freq*lamda_time
+        labda_position=0.05 #lengthscale of the position    
+        lamda_time=0.05 #lenghtscale of the time
+        lambda_index=self.rec_freq*lamda_time #convert the lenghtscale to work with indexes
         
-        sigma_treshold= 1 - np.exp(-2)
+        # we use an exponential kernel. The uncertainty can be estimated as simga= 1- exp(- (position_error)/lambda_error - (time_error)/lambda_time)
+        #We consider uncertainty points that have a distance of at least 2 times the sum of the normalized errors with the lengthscales
+        sigma_treshold= 1 - np.exp(-2) 
         #calcolation of correlation in space
         position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)/labda_position
 
         #calcolation of correlation in time
-        index_error= np.abs(np.arange(n_samples)-self.index)/lambda_index
-        index_error_clip= np.clip(index_error, 0, 1)
+        index=np.min([self.mu_index+look_ahead, n_samples-1])
+
+        index_error= np.abs(np.arange(n_samples)-index)/lambda_index
+        index_error_clip= np.clip(index_error, 0, 1) # we saturate the time error, to avoid that points that are far away in time cannot be activated in case of perturbation of the robot
 
         # Calculate the product of the two correlation vectors
         k_start_time_position=np.exp(-position_error-index_error_clip)
@@ -56,14 +60,19 @@ class SIMPLe(ILoSA):
         else:
             beta=1
             self.mu_index = int(self.mu_index+ 1.0*np.sign((int(np.argmax(k_start_time_position))- self.mu_index)))
+     
+        control_index=np.min([self.mu_index+look_ahead, n_samples-1])
 
-        if any(np.abs(np.array(self.feedback)) > 0.05): # this avoids to activate the feedback on noise joystick
-            print("Received Feedback")
-            self.training_traj=self.training_traj+ np.array(self.feedback)*k_start_time_position
-             
-        self.index=np.min([self.mu_index+look_ahead, n_samples-1])
+        return  control_index, beta
 
-        return  self.index, beta
+
+    def initialize_mu_index(self):
+        position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)
+        self.mu_index = int(np.argmin(position_error))
+
+    def control(self):
+        self.initialize_mu_index()
+        self.Interactive_Control()
 
     def step(self):
         
@@ -76,13 +85,11 @@ class SIMPLe(ILoSA):
         gripper_goal=self.training_gripper[i,0]
         
         self.set_attractor(pos_goal,quat_goal)
-        self.move_gripper(gripper_goal)
+        self.move_gripper(gripper_goal) #TODO write a better logic for the gripper 
             
         K_lin_scaled =beta*self.K_mean
         K_ori_scaled =beta*self.K_ori
         pos_stiff = [K_lin_scaled,K_lin_scaled,K_lin_scaled]
         rot_stiff = [K_ori_scaled,K_ori_scaled,K_ori_scaled]
-        # self.pos_stiff = self.K_mean*beta*np.ones([1,3]) 
-        # self.rot_stiff = self.K_ori*beta*np.ones([1,3])  
 
         self.set_stiffness(pos_stiff, rot_stiff, self.null_stiff)    
