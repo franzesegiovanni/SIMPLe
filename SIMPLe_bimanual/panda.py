@@ -35,33 +35,26 @@ class Panda:
         self.K_cart = 400.0
         self.K_null = 0.0
 
-        self.start = True
         self.end = False
 
         self.grip_command = GraspActionGoal()
         self.home_command = HomingActionGoal()
-        self.stop_command = StopActionGoal()
-
-        # The index variable is updated to allow for easy access to the current index position within the execution trajectory
-        self.index = 0
-
-        self.gripper_width = 0
-        self.grip_command.goal.epsilon.inner = 0.3
-        self.grip_command.goal.epsilon.outer = 0.3
-        self.grip_command.goal.speed = 0.1
-        self.grip_command.goal.force = 0.1
+        self.gripper_width_close=0.07 # if the recorded gripper is lower than 0.05, the robot is going to close during execution and if it larger, it is going to open
+        
+        self.grip_command.goal.epsilon.inner = 0.3 #by having this big tollerance, the robot will adapt the grasp to any object dimension 
+        self.grip_command.goal.epsilon.outer = 0.3 #by having this big tollerance, the robot will adapt the grasp to any object dimension 
+        self.grip_command.goal.speed = 1
+        self.grip_command.goal.force = 1
         self.grip_command.goal.width = 1
 
         self.attractor_distance_threshold = 0.08
         self.trajectory_distance_threshold = 0.08
 
-        self.mu_index=0.0
         rospy.Subscriber("/panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_cartesian_pose",
                          PoseStamped, self.ee_pose_callback)
         rospy.Subscriber("panda_dual/" + str(self.name) + "_state_controller/joint_states", JointState,
                          self.joint_callback)
         rospy.Subscriber("/" + str(self.name) + "_franka_gripper/joint_states", JointState, self.gripper_callback)
-        rospy.Subscriber("/" + str(self.name) + "/stiffness", Float32MultiArray, self.stiffness_callback, queue_size=1)
 
         self.goal_pub = rospy.Publisher(
             "/panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_equilibrium_pose", PoseStamped,
@@ -69,15 +62,12 @@ class Panda:
         self.configuration_pub = rospy.Publisher(
             "panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_nullspace", JointState,
             queue_size=0)
-        # self.gripper_pub = rospy.Publisher(str(self.name)+ "_gripper",Float32, queue_size=0)
+
         self.gripper_pub = rospy.Publisher("/" + str(self.name) + "_franka_gripper/grasp/goal", GraspActionGoal,
                                            queue_size=0)
         self.homing_pub = rospy.Publisher("/" + str(self.name) + "_franka_gripper/homing/goal", HomingActionGoal,
                                           queue_size=0)
         self.stop_pub = rospy.Publisher("/" + str(self.name) + "_franka_gripper/stop/goal", StopActionGoal,
-                                          queue_size=0)
-
-        self.stiffness_pub = rospy.Publisher("/" + str(self.name) + "/stiffness", Float32MultiArray,
                                           queue_size=0)
 
         self.nullspace_configuration_pub = rospy.Publisher("/panda_dual/bimanual_cartesian_impedance_controller/" + str(self.name) + "_nullspace", JointState,
@@ -102,9 +92,6 @@ class Panda:
         self.cart_ori = [data.pose.orientation.w, data.pose.orientation.x, data.pose.orientation.y,
                          data.pose.orientation.z]
 
-    def stiffness_callback(self, stiffness):
-        self.set_stiffness(stiffness.data[0],stiffness.data[1],stiffness.data[2],stiffness.data[3],stiffness.data[4],stiffness.data[5])
-
     # joint angle subscriber
     def joint_callback(self, data):
         self.joint_pos = data.position[0:7]
@@ -114,20 +101,16 @@ class Panda:
         self.gripper_width = np.copy(data.position[0] + data.position[1])
 
     def move_gripper(self, width):
-        if width < 0.07 and self.grip_command.goal.width != 0:
+        if width < self.gripper_width_close and self.grip_command.goal.width != 0:
             self.grip_command.goal.width = 0
             self.gripper_pub.publish(self.grip_command)
 
-        elif width > 0.07 and self.grip_command.goal.width != 1:
+        elif width > self.gripper_width_close and self.grip_command.goal.width != 1:
             self.grip_command.goal.width = 1
             self.gripper_pub.publish(self.grip_command)
 
     def home_gripper(self):
         self.homing_pub.publish(self.home_command)
-
-    def stop_gripper(self):
-        self.stop_pub.publish(self.stop_command)
-
 
     def set_stiffness(self, k_t1, k_t2, k_t3, k_r1, k_r2, k_r3):
 
