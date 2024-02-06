@@ -19,14 +19,15 @@ class Coordination(DualPanda):
 
         self.listener_arrow.start()
 
+        self.look_ahead=30 # this how many steps in the future the robot is going to move after one input on the keyboard
     def _on_press_arrow(self, key):
         # This function runs on the background and checks if a keyboard key was pressed
         if key == Key.right:
             self.right = True
-            self.index_right=int(self.index_right+1)
+            self.index_right=int(self.index_right+self.look_ahead)
         if key == Key.left:
             self.right = True
-            self.index_left=int(self.index_left+1)
+            self.index_left=int(self.index_left+self.look_ahead)
             
 
     def syncronize(self):
@@ -34,6 +35,8 @@ class Coordination(DualPanda):
         self.index_right=int(0)
         self.index_left=int(0)
 
+        ind_left=0
+        ind_right=0
         self.end=False
         r = rospy.Rate(self.control_freq)
 
@@ -49,19 +52,19 @@ class Coordination(DualPanda):
             return
 
         while not self.end:
-            self.index_right=np.min([self.index_right, self.Panda_right.recorded_traj.shape[1]-1])
-            self.index_left=np.min([self.index_left, self.Panda_left.recorded_traj.shape[1]-1])
-            attractor_pos_right = [self.Panda_right.recorded_traj[0][self.index_right],  self.Panda_right.recorded_traj[1][self.index_right],  self.Panda_right.recorded_traj[2][self.index_right]]
-            attractor_ori_right = [ self.Panda_right.recorded_ori[0][self.index_right],  self.Panda_right.recorded_ori[1][self.index_right],   self.Panda_right.recorded_ori[2][self.index_right],  self.Panda_right.recorded_ori[3][self.index_right]]
+            ind_right=np.min([ind_right+np.clip(self.index_right-ind_right,0,1), self.Panda_right.recorded_traj.shape[1]-1])
+            ind_left=np.min([ind_left+np.clip(self.index_left-ind_left,0,1), self.Panda_left.recorded_traj.shape[1]-1])
+            attractor_pos_right = [self.Panda_right.recorded_traj[0][ind_right],  self.Panda_right.recorded_traj[1][ind_right],  self.Panda_right.recorded_traj[2][ind_right]]
+            attractor_ori_right = [ self.Panda_right.recorded_ori[0][ind_right],  self.Panda_right.recorded_ori[1][ind_right],   self.Panda_right.recorded_ori[2][ind_right],  self.Panda_right.recorded_ori[3][ind_right]]
 
-            attractor_pos_left = [self.Panda_left.recorded_traj[0][self.index_left],  self.Panda_left.recorded_traj[1][self.index_left],  self.Panda_left.recorded_traj[2][self.index_left]]
-            attractor_ori_left = [ self.Panda_left.recorded_ori[0][self.index_left],  self.Panda_left.recorded_ori[1][self.index_left],   self.Panda_left.recorded_ori[2][self.index_left],  self.Panda_left.recorded_ori[3][self.index_left]]
+            attractor_pos_left = [self.Panda_left.recorded_traj[0][ind_left],  self.Panda_left.recorded_traj[1][ind_left],  self.Panda_left.recorded_traj[2][ind_left]]
+            attractor_ori_left = [ self.Panda_left.recorded_ori[0][ind_left],  self.Panda_left.recorded_ori[1][ind_left],   self.Panda_left.recorded_ori[2][ind_left],  self.Panda_left.recorded_ori[3][ind_left]]
 
             self.Panda_right.set_attractor(attractor_pos_right, attractor_ori_right)
-            self.Panda_right.move_gripper(self.Panda_right.recorded_gripper[0, self.index_right])
+            self.Panda_right.move_gripper(self.Panda_right.recorded_gripper[0, ind_right])
 
             self.Panda_left.set_attractor(attractor_pos_left, attractor_ori_left)
-            self.Panda_left.move_gripper(self.Panda_left.recorded_gripper[0, self.index_left])
+            self.Panda_left.move_gripper(self.Panda_left.recorded_gripper[0, ind_left])
 
 
             r.sleep()
@@ -81,6 +84,7 @@ if __name__ == '__main__':
     #%%
     BiManualTeaching.Panda_left.home()
     BiManualTeaching.Panda_right.home()
+    #%%
     BiManualTeaching.Panda_left.home_gripper()
     BiManualTeaching.Panda_right.home_gripper()
     #%%
@@ -98,4 +102,5 @@ if __name__ == '__main__':
 
     #%%
     BiManualTeaching.syncronize()
-# %%
+    # %%
+  
