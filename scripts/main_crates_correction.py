@@ -32,16 +32,6 @@ if __name__ == '__main__':
     # EXECUTE DEMONSTRATION AT THE SAME TIME BUT GIVE CORRECTIONS
     #%%
     BiManualTeaching.execute_dual()
-     # %%
-    BiManualTeaching.Panda_left.home()
-    BiManualTeaching.Panda_right.home()
-    #%%
-    BiManualTeaching.entanglement_execute_dual()
-    # %%
-    BiManualTeaching.Panda_left.home()
-    BiManualTeaching.Panda_right.home()
-    #%%
-    BiManualTeaching.syncronization_execute_dual()
     # %%
     BiManualTeaching.Panda_left.home()
     BiManualTeaching.Panda_right.home()

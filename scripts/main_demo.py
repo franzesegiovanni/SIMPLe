@@ -6,7 +6,7 @@ This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
 import matplotlib
-from dual_panda_ILoSA import DualPanda
+from SIMPLe_bimanual.dual_panda import DualPanda
 import time
 import rospy
 from mpl_toolkits import mplot3d
@@ -51,8 +51,6 @@ if __name__ == '__main__':
     # %%
     BiManualTeaching.Panda_left.home()
     BiManualTeaching.Panda_right.home()
-    #%%    TEST HOW IT PERFORMS IN THE BIMANUAL TASK
-    BiManualTeaching.entanglement_execute_dual()
     #%% ASK TWO STUDENDTS TO GIVE A DEMO TOGETHER
     BiManualTeaching.Panda_left.home()
     BiManualTeaching.Panda_right.home()

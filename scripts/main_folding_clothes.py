@@ -6,7 +6,7 @@ This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
 import matplotlib
-from dual_panda_ILoSA import DualPanda
+from SIMPLe_bimanual.dual_panda import DualPanda
 import time
 
 from mpl_toolkits import mplot3d
@@ -31,11 +31,7 @@ if __name__ == '__main__':
     #%%
     BiManualTeaching.go_to_start()
     #%% Give perturbations
-    BiManualTeaching.execute_dual()
-    #%%
-    BiManualTeaching.go_to_start()
-    #%%
-    BiManualTeaching.entanglement_execute_dual()   
+    BiManualTeaching.execute_dual() 
      #%%
     BiManualTeaching.go_to_start()
 
