@@ -6,7 +6,7 @@ This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
 import matplotlib
-from dual_panda_ILoSA import DualPanda
+from SIMPLe_bimanual.dual_panda import DualPanda
 import time
 
 from mpl_toolkits import mplot3d
@@ -44,19 +44,3 @@ BiManualTeaching.Kinesthetic_Demonstration_BiManual()
 BiManualTeaching.go_to_start()
 #%%
 BiManualTeaching.execute_dual()
-
-#%%
-# 3D plot
-traj_list = [traj1, traj2]
-color_list = ['red', 'gray', 'yellow']
-fig = plt.figure(0)
-ax = plt.axes(projection='3d')
-for i,traj in enumerate(traj_list):
-    ax.plot3D(traj[0], traj[1], traj[2], color_list[i])
-# %%
-ax = plt.axes()
-for i,traj in enumerate(traj_list):
-    for j, data in enumerate(traj):
-        fig = plt.figure(j+1)
-        plt.plot(data, color_list[i])
-# %%

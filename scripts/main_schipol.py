@@ -5,12 +5,8 @@ Cognitive Robotics, TU Delft
 This code is part of TERI (TEaching Robots Interactively) project
 """
 #%%
-import matplotlib
 from SIMPLe_bimanual.dual_panda import DualPanda
 import time
-
-from mpl_toolkits import mplot3d
-import matplotlib.pyplot as plt
 #%%
 if __name__ == '__main__':
     BiManualTeaching=DualPanda()
@@ -29,16 +25,9 @@ if __name__ == '__main__':
     # EXECUTE DEMONSTRATION AT THE SAME TIME BUT GIVE CORRECTIONS
     #%%
     BiManualTeaching.execute_dual()
-     # %%
-    BiManualTeaching.Panda_left.home()
-    BiManualTeaching.Panda_right.home()
-    #%%
-    BiManualTeaching.entanglement_execute_dual()
     # %%
     BiManualTeaching.Panda_left.home()
     BiManualTeaching.Panda_right.home()
-    #%%
-    BiManualTeaching.syncronization_execute_dual()
     # %%
     BiManualTeaching.Panda_left.home()
     BiManualTeaching.Panda_right.home()

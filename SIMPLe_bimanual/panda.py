@@ -39,8 +39,9 @@ class Panda:
 
         self.grip_command = GraspActionGoal()
         self.home_command = HomingActionGoal()
-        self.gripper_width_close=0.07 # if the recorded gripper is lower than 0.05, the robot is going to close during execution and if it larger, it is going to open
+        self.gripper_width_close=0.07 # if the recorded gripper is lower than 0.07, the robot is going to close during execution and if it larger, it is going to open
         
+        self.gripper_width=0.08
         self.grip_command.goal.epsilon.inner = 0.3 #by having this big tollerance, the robot will adapt the grasp to any object dimension 
         self.grip_command.goal.epsilon.outer = 0.3 #by having this big tollerance, the robot will adapt the grasp to any object dimension 
         self.grip_command.goal.speed = 1
@@ -179,13 +180,12 @@ class Panda:
                 attractor_pos = [self.recorded_traj[0][i], self.recorded_traj[1][i], self.recorded_traj[2][i]]
                 attractor_ori = [self.recorded_ori[0][i], self.recorded_ori[1][i], self.recorded_ori[2][i],self.recorded_ori[3][i]]
 
-                self.set_stiffness(beta *self.recorded_stiff_lin[0][i], beta *self.recorded_stiff_lin[1][i], beta *self.recorded_stiff_lin[2][i], beta *self.recorded_stiff_ori[0][i], beta *self.recorded_stiff_ori[1][i], beta *self.recorded_stiff_ori[2][i])
                 self.set_attractor(attractor_pos, attractor_ori)
                 self.move_gripper(self.recorded_gripper[0, i])
                 r.sleep()
         
         start.data = False
-        print('Stopped execution of the behaviour of' + str(self.name))
+        print('Stopped execution of the behaviour of ' + str(self.name))
 
 
 

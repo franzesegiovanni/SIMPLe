@@ -76,7 +76,7 @@ class DualPanda:
 
         self.end = False
 
-        print("Recording started. Press e to stop.")
+        print("Recording started. Press Esc to stop.")
         self.recorded_traj_dual = np.r_[self.Panda_right.cart_pos, self.Panda_left.cart_pos]
         self.recorded_joint_dual = np.r_[self.Panda_right.joint_pos, self.Panda_left.joint_pos]
         self.recorded_ori_dual = np.r_[self.Panda_right.cart_ori, self.Panda_left.cart_ori]
@@ -214,13 +214,9 @@ class DualPanda:
         self.Panda_left.recorded_stiffness_lin = self.recorded_stiffness_lin_dual[3:]
         self.Panda_left.recorded_stiffness_ori = self.recorded_stiffness_ori_dual[3:]
 
-        self.client.update_configuration({"panda_left_enable_correction":True, "panda_right_enable_correction":True, "dual_enable_correction": True})
-
         self.Panda_left.execute_traj()
         self.Panda_right.execute_traj()
         self.Kinesthetic_Demonstration_BiManual(active=True)
-
-        self.client.update_configuration({"panda_left_enable_correction":False, "panda_right_enable_correction":False, "dual_enable_correction": False})
  
     def go_to_start(self):
         """
