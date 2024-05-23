@@ -244,7 +244,6 @@ class Panda():
 
         
     def Kinesthetic_Demonstration(self, trigger=0.005): 
-        self.Passive()
 
         self.end = False
         init_pos = self.cart_pos
@@ -253,6 +252,7 @@ class Panda():
         while vel < trigger:
             vel = math.sqrt((self.cart_pos[0]-init_pos[0])**2 + (self.cart_pos[1]-init_pos[1])**2 + (self.cart_pos[2]-init_pos[2])**2)
 
+        self.Passive()
         print("Recording started. Press Esc to stop.")
 
         self.recorded_traj = self.cart_pos.reshape(1,3)
@@ -268,6 +268,8 @@ class Panda():
 
             self.r_rec.sleep()
         
+        self.Active()
+        
             
 
     def Passive(self):
@@ -275,3 +277,16 @@ class Panda():
         rot_stiff=[0.0 , 0.0, 0.0] 
         null_stiff=[0.0]
         self.set_stiffness(pos_stiff, rot_stiff, null_stiff)
+    
+    def Active(self):
+
+        goal.pose.position.x = self.cart_pos[0]
+        goal.pose.position.y = self.cart_pos[1]
+        goal.pose.position.z = self.cart_pos[2]
+        goal.pose.orientation.w = self.cart_ori[0]
+        goal.pose.orientation.x = self.cart_ori[1]
+        goal.pose.orientation.y = self.cart_ori[2]
+        goal.pose.orientation.z = self.cart_ori[3]
+ 
+        self.goal_pub.publish(goal)
+        self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori, 0)
