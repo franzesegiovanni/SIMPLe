@@ -10,6 +10,7 @@ import math
 import numpy as np
 import time
 import quaternion
+from std_msgs.msg import Bool
 from sensor_msgs.msg import JointState, Joy
 from geometry_msgs.msg import PoseStamped, Vector3
 from franka_gripper.msg import GraspActionGoal, HomingActionGoal, StopActionGoal, MoveActionGoal
@@ -50,6 +51,13 @@ class Panda():
         # This function runs on the background and checks if a keyboard key was pressed
         if key == Key.esc:
             self.end = True
+            print("Esc pressed. Stopping...")
+    
+    def button_subscriber(self, data):
+        if data == True:
+            self.end = True
+            print("Button pressed on Panda. Stopping...")
+
 
     def ee_pose_callback(self, data):
         self.cart_pos = np.array([data.pose.position.x, data.pose.position.y, data.pose.position.z])
@@ -101,6 +109,7 @@ class Panda():
         rospy.Subscriber("/spacenav/joy", Joy, self.btns_callback)
         rospy.Subscriber("/joint_states", JointState, self.joint_callback)
         rospy.Subscriber("/joint_states", JointState, self.gripper_callback)
+        rospy.Subscriber("/franka_buttons/circle", Bool, self.button_subscriber)
 
         self.goal_pub  = rospy.Publisher('/equilibrium_pose', PoseStamped, queue_size=0)
         self.configuration_pub = rospy.Publisher("/equilibrium_configuration",Float32MultiArray, queue_size=0)
@@ -112,8 +121,7 @@ class Panda():
                                           queue_size=0)
         self.stop_pub = rospy.Publisher("/franka_gripper/stop/goal", StopActionGoal,
                                           queue_size=0)
-        self.stiff_ori_pub = rospy.Publisher('/stiffness_rotation', PoseStamped, queue_size=0)
-        self.ellipse_pub = rospy.Publisher('/stiffness_ellipsoid', Marker, queue_size=0)
+
 
         self.set_K = dynamic_reconfigure.client.Client('/dynamic_reconfigure_compliance_param_node', config_callback=None)
 
@@ -143,24 +151,6 @@ class Panda():
         
 
         self.goal_pub.publish(goal)
-
-    def set_stiffness_ori(self,quat):
-
-        goal = PoseStamped()
-        goal.header.seq = 1
-        goal.header.stamp = rospy.Time.now()
-        goal.header.frame_id = "map"
-        goal.pose.position.x = 0.0
-        goal.pose.position.y = 0.0
-        goal.pose.position.z = 0.0
-
-        goal.pose.orientation.w = quat[0]
-        goal.pose.orientation.x = quat[1]
-        goal.pose.orientation.y = quat[2]
-        goal.pose.orientation.z = quat[3]
-        
-
-        self.stiff_ori_pub.publish(goal)
 
 
     def set_configuration(self,joint):
@@ -279,7 +269,7 @@ class Panda():
         self.set_stiffness(pos_stiff, rot_stiff, null_stiff)
     
     def Active(self):
-
+        goal = PoseStamped()
         goal.pose.position.x = self.cart_pos[0]
         goal.pose.position.y = self.cart_pos[1]
         goal.pose.position.z = self.cart_pos[2]

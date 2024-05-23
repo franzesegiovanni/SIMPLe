@@ -4,6 +4,8 @@ import rospy
 from .panda import Panda
 import pathlib
 from geometry_msgs.msg import PoseStamped
+import os
+import re
 class SIMPLe(Panda):
 
     def __init__(self):
@@ -96,13 +98,6 @@ class SIMPLe(Panda):
         training_traj=self.training_traj,
         training_ori = self.training_ori,
         training_gripper=self.training_gripper)
-        print('Training data saved shape')
-        print('Traning ori')
-        print(np.shape(self.training_ori))
-        print('Training traj')
-        print(np.shape(self.training_traj))  
-        print('Training gripper')
-        print(np.shape(self.training_gripper))
 
     def load(self, file='last'):
         data =np.load(str(pathlib.Path().resolve())+'/data/'+str(file)+'.npz')
@@ -111,6 +106,65 @@ class SIMPLe(Panda):
         self.training_ori=data['training_ori']
         self.training_gripper=data['training_gripper'] 
 
+    def save_demo(self, file='demo'):
+        folder_path = str(pathlib.Path().resolve()) + '/demos'
+        file_prefix = file
+        file_suffix = '.npz'
+        
+        # Ensure the folder exists
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+        
+        # List all files in the directory
+        existing_files = os.listdir(folder_path)
+        
+        # Extract numbers from filenames
+        existing_numbers = []
+        for filename in existing_files:
+            match = re.match(rf"{re.escape(file_prefix)}_(\d+){re.escape(file_suffix)}", filename)
+            if match:
+                existing_numbers.append(int(match.group(1)))
+        
+        # Find the smallest available number
+        if existing_numbers:
+            smallest_available_number = min(set(range(len(existing_numbers) + 1)) - set(existing_numbers))
+        else:
+            smallest_available_number = 0
+        
+        # Create the new filename
+        new_filename = f"{file_prefix}_{smallest_available_number}{file_suffix}"
+        new_file_path = os.path.join(folder_path, new_filename)
+        
+        # Save the demos to the new file
+        np.savez(new_file_path, 
+                training_traj=self.training_traj,
+                training_ori=self.training_ori,
+                training_gripper=self.training_gripper)
+        
+        print(f"Demos saved as {new_filename}")
+
+    def load_demo(self, index):
+        folder_path = str(pathlib.Path().resolve()) + '/demos'
+        file_prefix = 'demo'
+        file_suffix = '.npz'
+        
+        # Create the filename with the specified index
+        filename = f"{file_prefix}_{index}{file_suffix}"
+        file_path = os.path.join(folder_path, filename)
+        
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"No demo file found with index {index}")
+        
+        # Load the demo data from the file
+        data = np.load(file_path)
+        
+        # Extract the training data
+        self.training_traj = data['training_traj']
+        self.training_ori = data['training_ori']
+        self.training_gripper = data['training_gripper']
+        
+        print(f"Demo {filename} loaded successfully.")
 
     def initialize_mu_index(self):
         position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)
