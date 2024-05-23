@@ -9,10 +9,19 @@ published in Transaction of Mechatronics (T-MECH).
 
 - [The paper](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=10215052)
 
-If you find this repository useful, please cite: 
 
+### Installation 
+
+Clone the repository in your ROS workspace. 
+
+```bash
+git clone https://github.com/franzesegiovanni/SIMPLe.git 
 ```
-Franzese, G., de Souza Rosa, L., Verburg, T., Peternel, L. and Kober, J., 2023. Interactive imitation learning of bimanual movement primitives. IEEE/ASME Transactions on Mechatronics.
+
+Build your workspace. 
+
+```bash
+catkin build
 ```
 
 ### How to run SIMPLe bimanual
@@ -31,8 +40,12 @@ In the directory scripts there are many examples.
 Install the human friently impedance controller
 - [The human-friendly impedance controller](https://github.com/franzesegiovanni/franka_human_friendly_controllers.git)
 
-Install ILoSA that we will use as base class and only change the trajectory representation using a Graph Gaussian Process 
-
-- [Interactive Learning of Stiffness and Attractors](https://github.com/franzesegiovanni/ILoSA.git)
-
 You can use the SIMPLE/main as example to start recording and executing motion using the SIMPLe trajectory representation. 
+
+### Cite us
+
+If you find this repository useful, please cite: 
+
+```
+Franzese, G., de Souza Rosa, L., Verburg, T., Peternel, L. and Kober, J., 2023. Interactive imitation learning of bimanual movement primitives. IEEE/ASME Transactions on Mechatronics.
+```
