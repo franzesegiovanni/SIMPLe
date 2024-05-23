@@ -20,7 +20,8 @@ class SIMPLe(Panda):
         self.control_freq=20 # [Hz]
         self.r_control=rospy.Rate(self.control_freq)
         self.r_rec=rospy.Rate(self.rec_freq)
-
+        self.speed=1 # if this variable is how much faster the motion is going to be executed with respect to the recorded one. It can be any potiviie number, does not need to be an integer. It can also be smaller than 1, in this case the motion is going to be slower than the recorded one.
+        self.look_ahead=3
     def Record_Demonstration(self):
         self.Kinesthetic_Demonstration()
         print('Recording ended.')
@@ -52,7 +53,7 @@ class SIMPLe(Panda):
         start.pose.orientation.z = self.training_ori[0,3] 
         self.go_to_pose(start)        
 
-    def GGP(self, look_ahead=3):
+    def GGP(self):
         n_samples=self.training_traj.shape[0]
 
         labda_position=0.05 #lengthscale of the position    
@@ -66,7 +67,7 @@ class SIMPLe(Panda):
         position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)/labda_position
 
         #calcolation of correlation in time
-        index=np.min([self.mu_index+look_ahead, n_samples-1])
+        index=np.min([self.mu_index+self.look_ahead, n_samples-1])
 
         index_error= np.abs(np.arange(n_samples)-index)/lambda_index
         index_error_clip= np.clip(index_error, 0, 1) # we saturate the time error, to avoid that points that are far away in time cannot be activated in case of perturbation of the robot
@@ -83,9 +84,10 @@ class SIMPLe(Panda):
             self.mu_index = int(np.argmax(k_start_time_position))
         else:
             beta=1
-            self.mu_index = int(self.mu_index+ 1.0*np.sign((int(np.argmax(k_start_time_position))- self.mu_index)))
-     
-        control_index=np.min([self.mu_index+look_ahead, n_samples-1])
+            self.mu_index = self.mu_index+ self.speed*np.sign((int(np.argmax(k_start_time_position))- self.mu_index))
+
+        control_index= np.floor(self.mu_index+self.look_ahead).astype(int) # the floor is used to sed the integer part of the number since we are looking for indexes.
+        control_index=np.min([control_index, n_samples-1])
 
         return  control_index, beta
 
