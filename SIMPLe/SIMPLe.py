@@ -1,35 +1,59 @@
-from ILoSA import ILoSA #you need to pip install ILoSA first 
 import numpy as np
-from ILoSA import InteractiveGP
-from ILoSA.data_prep import slerp_sat
-import pickle
-from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
+from .utils import slerp_sat
 import rospy
-class SIMPLe(ILoSA):
+from .panda import Panda
+import pathlib
+from geometry_msgs.msg import PoseStamped
+class SIMPLe(Panda):
 
     def __init__(self):
         super(SIMPLe, self).__init__()
+        # stiffness parameters
+        self.K_lin = 600
+        self.dK_min = 0.0
+        self.null_stiff=[0.0]
+        # maximum attractor distance along each axis
+        # uncertainty threshold at which stiffness is automatically reduced
+        # maximum force of the gradient
+
         self.rec_freq = 20  # [Hz]
         self.control_freq=20 # [Hz]
         self.r_control=rospy.Rate(self.control_freq)
         self.r_rec=rospy.Rate(self.rec_freq)
-    def Train_GPs(self):
-        print("SIMPLe does not need to be trained")
-        if len(self.nullspace_traj)>0 and len(self.nullspace_joints)>0:
-            print("Training of Nullspace")
-            kernel = C(constant_value = 0.1, constant_value_bounds=[0.0005, self.attractor_lim]) * RBF(length_scale=[0.1, 0.1, 0.1], length_scale_bounds=[0.025, 0.1]) + WhiteKernel(0.00025, [0.0001, 0.0005]) 
-            self.NullSpaceControl=InteractiveGP(X=self.nullspace_traj, Y=self.nullspace_joints, y_lim=[-self.attractor_lim, self.attractor_lim], kernel=kernel, n_restarts_optimizer=20)
-            self.NullSpaceControl.fit()
-            with open('models/nullspace.pkl','wb') as nullspace:
-                pickle.dump(self.NullSpaceControl,nullspace)
-        else: 
-            print('No Null Space Control Policy Learned')    
 
+    def Record_Demonstration(self):
+        self.Kinesthetic_Demonstration()
+        print('Recording ended.')
+        save_demo = input("Do you want to keep this demonstration? [y/n] \n")
+        if save_demo.lower()=='y':
+            self.training_traj=np.empty((0,3))
+            self.training_ori=np.empty((0,4))
+            self.training_gripper=np.empty((0,1))
 
+            self.training_traj=np.vstack([self.training_traj,self.recorded_traj])
+            self.training_ori=np.vstack([self.training_ori,self.recorded_ori])
+            self.training_gripper=np.vstack([self.training_gripper,self.recorded_gripper])
+            print("Demo Saved")
+        else:
+            print("Demo Discarded")
+
+    def go_to_start(self):
+        print("Reset to the starting cartesian position")
+        start = PoseStamped()
+        self.home_gripper()
+
+        start.pose.position.x = self.training_traj[0,0]
+        start.pose.position.y = self.training_traj[0,1]
+        start.pose.position.z = self.training_traj[0,2]
+        
+        start.pose.orientation.w = self.training_ori[0,0] 
+        start.pose.orientation.x = self.training_ori[0,1] 
+        start.pose.orientation.y = self.training_ori[0,2] 
+        start.pose.orientation.z = self.training_ori[0,3] 
+        self.go_to_pose(start)        
 
     def GGP(self, look_ahead=3):
         n_samples=self.training_traj.shape[0]
-        look_ahead=3 # how many steps forward is the attractor for any element of the graph
 
         labda_position=0.05 #lengthscale of the position    
         lamda_time=0.05 #lenghtscale of the time
@@ -65,10 +89,39 @@ class SIMPLe(ILoSA):
 
         return  control_index, beta
 
+    def save(self, file='last'):
+        np.savez(str(pathlib.Path().resolve())+'/data/'+str(file)+'.npz', 
+        training_traj=self.training_traj,
+        training_ori = self.training_ori,
+        training_gripper=self.training_gripper)
+        print('Training data saved shape')
+        print('Traning ori')
+        print(np.shape(self.training_ori))
+        print('Training traj')
+        print(np.shape(self.training_traj))  
+        print('Training gripper')
+        print(np.shape(self.training_gripper))
+
+    def load(self, file='last'):
+        data =np.load(str(pathlib.Path().resolve())+'/data/'+str(file)+'.npz')
+
+        self.training_traj=data['training_traj']
+        self.training_ori=data['training_ori']
+        self.training_gripper=data['training_gripper'] 
+
 
     def initialize_mu_index(self):
         position_error= np.linalg.norm(self.training_traj - np.array(self.cart_pos), axis=1)
         self.mu_index = int(np.argmin(position_error))
+
+    def Interactive_Control(self):
+        print("Press Esc to stop.")
+        self.end=False
+        while not self.end:            
+
+            self.step()    
+
+            self.r_control.sleep()
 
     def control(self):
         self.initialize_mu_index()
@@ -87,7 +140,7 @@ class SIMPLe(ILoSA):
         self.set_attractor(pos_goal,quat_goal)
         self.move_gripper(gripper_goal) #TODO write a better logic for the gripper 
             
-        K_lin_scaled =beta*self.K_mean
+        K_lin_scaled =beta*self.K_lin
         K_ori_scaled =beta*self.K_ori
         pos_stiff = [K_lin_scaled,K_lin_scaled,K_lin_scaled]
         rot_stiff = [K_ori_scaled,K_ori_scaled,K_ori_scaled]
