@@ -53,8 +53,8 @@ class Panda():
             self.end = True
             print("Esc pressed. Stopping...")
     
-    def button_subscriber(self, data):
-        if data == True:
+    def button_subscriber(self, msg):
+        if msg.data == True:
             self.end = True
             print("Button pressed on Panda. Stopping...")
 
@@ -279,4 +279,7 @@ class Panda():
         goal.pose.orientation.z = self.cart_ori[3]
  
         self.goal_pub.publish(goal)
-        self.set_stiffness(self.K_cart, self.K_cart, self.K_cart, self.K_ori, self.K_ori, self.K_ori, 0)
+        pos_stiff=[self.K_cart,self.K_cart,self.K_cart]
+        rot_stiff=[self.K_ori , self.K_ori, self.K_ori] 
+        null_stiff=[0.0]
+        self.set_stiffness(pos_stiff, rot_stiff, null_stiff)
