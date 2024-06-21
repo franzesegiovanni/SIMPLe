@@ -1,7 +1,7 @@
 import numpy as np
-from .utils import slerp_sat
+from utils import slerp_sat
 import rospy
-from .panda import Panda
+from panda import Panda
 import pathlib
 from geometry_msgs.msg import PoseStamped
 import os
