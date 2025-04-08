@@ -25,8 +25,8 @@ class Panda():
 
     def __init__(self):
         super(Panda,self).__init__()
-        self.K_ori  = 30.0
-        self.K_cart = 600.0
+        self.K_ori  = 40.0
+        self.K_cart = 4000.0
         self.K_null = 10.0
 
         self.start = True
@@ -46,6 +46,8 @@ class Panda():
         # Start keyboard listener
         self.listener = Listener(on_press=self._on_press)
         self.listener.start()
+        self.gripper_state=np.array(1.0)
+        self.previous_width = np.array(1.0)
 
     def _on_press(self, key):
         # This function runs on the background and checks if a keyboard key was pressed
@@ -53,16 +55,27 @@ class Panda():
             self.end = True
             print("Esc pressed. Stopping...")
     
-    def button_subscriber(self, msg):
+    def button_circle_subscriber(self, msg):
         if msg.data == True:
             self.end = True
             print("Button pressed on Panda. Stopping...")
-
-
+    def button_check_subscriber(self, msg):
+        if msg.data == True: 
+            self.grasp_gripper(0.0)
+            self.gripper_state= np.array(0.0)
+    def button_cross_subscriber(self, msg):
+        if msg.data == True: 
+            self.move_gripper(1.0)
+            self.gripper_state= np.array(1.0)
     def ee_pose_callback(self, data):
+        self.cart_pose = data
         self.cart_pos = np.array([data.pose.position.x, data.pose.position.y, data.pose.position.z])
         self.cart_ori = np.array([data.pose.orientation.w, data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z])
 
+    def ee_pos_goal_callback(self, data):
+        self.goal_pose = data
+        self.cart_pos_goal = np.array([data.pose.position.x, data.pose.position.y, data.pose.position.z])
+        self.cart_ori_goal = np.array([data.pose.orientation.w, data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z])
     # joint angle subscriber
     def joint_callback(self, data):
         self.joint_pos = np.array(data.position[0:7])
@@ -87,14 +100,19 @@ class Panda():
         self.move_command.goal.width=width
         self.move_pub.publish(self.move_command)
 
-    def grasp_gripper(self, width):
-        if width < 0.07 and self.grasp_command.goal.width != 0:
-            self.grasp_command.goal.width = 0
-            self.grasp_pub.publish(self.grasp_command)
+    def activate_gripper(self, grip_value):
+        if self.previous_width != grip_value:
+            if grip_value ==0:
+                self.grasp_gripper(grip_value)
+                time.sleep(0.5)
+            else: 
+                self.move_gripper(grip_value)     
+                time.sleep(0.5)
+        self.previous_width = grip_value
 
-        elif width > 0.07 and self.grasp_command.goal.width != 1:
-            self.grasp_command.goal.width = 1
-            self.grasp_pub.publish(self.grasp_command)
+    def grasp_gripper(self, width):
+        self.grasp_command.goal.width = width
+        self.grasp_pub.publish(self.grasp_command)
 
     def home_gripper(self):
         self.homing_pub.publish(self.home_command)
@@ -109,7 +127,11 @@ class Panda():
         rospy.Subscriber("/spacenav/joy", Joy, self.btns_callback)
         rospy.Subscriber("/joint_states", JointState, self.joint_callback)
         rospy.Subscriber("/joint_states", JointState, self.gripper_callback)
-        rospy.Subscriber("/franka_buttons/circle", Bool, self.button_subscriber)
+        rospy.Subscriber("/franka_buttons/circle", Bool, self.button_circle_subscriber)
+        rospy.Subscriber("/franka_buttons/cross", Bool, self.button_cross_subscriber)
+        rospy.Subscriber("/franka_buttons/check", Bool, self.button_check_subscriber)
+
+        rospy.Subscriber("equilibrium_pose", PoseStamped, self.ee_pos_goal_callback)
 
         self.goal_pub  = rospy.Publisher('/equilibrium_pose', PoseStamped, queue_size=0)
         self.configuration_pub = rospy.Publisher("/equilibrium_configuration",Float32MultiArray, queue_size=0)
@@ -232,7 +254,16 @@ class Panda():
             self.goal_pub.publish(goal)
             r.sleep()   
 
-        
+    def home(self, height=0.35, front_offset=0.4, side_offset=0.0):
+        # self.goal_pub.publish(self.cart_pos)
+        self.Active()
+
+        pos_array = np.array([front_offset, side_offset, height])
+        quat = np.quaternion(0, 1, 0, 0)
+        goal = pos_quat_2_pose_st(pos_array, quat)
+        goal.header.seq = 1
+        goal.header.stamp = rospy.Time.now()
+        self.go_to_pose(goal)
     def Kinesthetic_Demonstration(self, trigger=0.005): 
 
         self.end = False
@@ -248,13 +279,13 @@ class Panda():
         self.recorded_traj = self.cart_pos.reshape(1,3)
         self.recorded_ori  = self.cart_ori.reshape(1,4)
         self.recorded_joint= self.joint_pos.reshape(1,7)
-        self.recorded_gripper= self.gripper_pos.reshape(1,1)
+        self.recorded_gripper= self.gripper_state.reshape(1,1)
         while not self.end:
 
             self.recorded_traj = np.vstack([self.recorded_traj, self.cart_pos])
             self.recorded_ori  = np.vstack([self.recorded_ori,  self.cart_ori])
             self.recorded_joint = np.vstack([self.recorded_joint, self.joint_pos])
-            self.recorded_gripper = np.vstack([self.recorded_gripper, self.gripper_pos])
+            self.recorded_gripper = np.vstack([self.recorded_gripper, self.gripper_state])
 
             self.r_rec.sleep()
         
@@ -283,3 +314,36 @@ class Panda():
         rot_stiff=[self.K_ori , self.K_ori, self.K_ori] 
         null_stiff=[0.0]
         self.set_stiffness(pos_stiff, rot_stiff, null_stiff)
+    def offset_compensator(self, steps):
+        
+        curr_quat_desired= list_2_quaternion(np.copy(self.cart_ori_goal))
+        curr_pos_desired = np.copy(self.cart_pos_goal)
+        for _ in range(steps):
+            curr_quat_goal= list_2_quaternion(self.cart_ori_goal)
+            curr_pos_goal = self.cart_pos_goal 
+            curr_quat = list_2_quaternion(self.cart_ori)    
+            
+                    
+            quat_diff = curr_quat_desired * curr_quat.inverse() 
+            lin_diff = curr_pos_desired - self.cart_pos 
+            
+            
+            quat_goal_new = quat_diff * curr_quat_goal
+            goal_pos = curr_pos_goal + lin_diff
+            
+            goal_pose = pos_quat_2_pose_st(goal_pos, quat_goal_new)
+            self.goal_pub.publish(goal_pose) 
+            rospy.sleep(0.2)
+def pos_quat_2_pose_st(pos_array, quat):
+    pose_st = PoseStamped()
+    pose_st.pose.position.x = pos_array[0]
+    pose_st.pose.position.y = pos_array[1]
+    pose_st.pose.position.z = pos_array[2]
+    pose_st.pose.orientation.x = quat.x
+    pose_st.pose.orientation.y = quat.y
+    pose_st.pose.orientation.z = quat.z
+    pose_st.pose.orientation.w = quat.w
+    return pose_st
+
+def list_2_quaternion(quaternion_list: list):
+    return np.quaternion(quaternion_list[0], quaternion_list[1], quaternion_list[2], quaternion_list[3])

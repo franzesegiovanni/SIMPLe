@@ -11,7 +11,7 @@ class SIMPLe(Panda):
     def __init__(self):
         super(SIMPLe, self).__init__()
         # stiffness parameters
-        self.K_lin = 600
+        self.K_lin = 1000
         self.dK_min = 0.0
         self.null_stiff=[0.0]
         # maximum attractor distance along each axis
@@ -23,7 +23,7 @@ class SIMPLe(Panda):
         self.r_control=rospy.Rate(self.control_freq)
         self.r_rec=rospy.Rate(self.rec_freq)
         self.speed=1 # if this variable is how much faster the motion is going to be executed with respect to the recorded one. It can be any potiviie number, does not need to be an integer. It can also be smaller than 1, in this case the motion is going to be slower than the recorded one.
-        self.look_ahead=3
+        self.look_ahead=1
     def Record_Demonstration(self):
         self.Kinesthetic_Demonstration()
         print('Recording ended.')
@@ -190,15 +190,15 @@ class SIMPLe(Panda):
         pos_goal  = self.training_traj[i,:]
         pos_goal=self.cart_pos+ np.clip([pos_goal[0]-self.cart_pos[0],pos_goal[1]-self.cart_pos[1],pos_goal[2]-self.cart_pos[2]],-0.05,0.05)
         quat_goal = self.training_ori[i,:]
-        quat_goal=slerp_sat(self.cart_ori, quat_goal, 0.1)
+        quat_goal=slerp_sat(self.cart_ori, quat_goal, 0.5)
         gripper_goal=self.training_gripper[i,0]
-        
+        # print("Gripper goal", gripper_goal)
         self.set_attractor(pos_goal,quat_goal)
-        self.move_gripper(gripper_goal) #TODO write a better logic for the gripper 
-            
+        # self.move_gripper(gripper_goal) #TODO write a better logic for the gripper 
+        self.activate_gripper(gripper_goal)    
         K_lin_scaled =beta*self.K_lin
         K_ori_scaled =beta*self.K_ori
         pos_stiff = [K_lin_scaled,K_lin_scaled,K_lin_scaled]
         rot_stiff = [K_ori_scaled,K_ori_scaled,K_ori_scaled]
 
-        self.set_stiffness(pos_stiff, rot_stiff, self.null_stiff)    
+        # self.set_stiffness(pos_stiff, rot_stiff, self.null_stiff)    
